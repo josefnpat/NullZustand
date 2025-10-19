@@ -35,29 +35,54 @@ namespace NullZustand.MessageHandlers.Handlers
 
             long lastUpdateId = payload.lastUpdateId;
 
-            // Get all location updates since the specified ID
-            var updates = _playerManager.GetLocationUpdatesSince(lastUpdateId);
-            long currentUpdateId = _playerManager.GetCurrentUpdateId();
-
-            // Convert to a simple format for the response
-            var updatesList = updates.Select(u => new
+            try
             {
-                updateId = u.UpdateId,
-                username = u.Username,
-                x = u.X,
-                y = u.Y,
-                z = u.Z,
-                timestamp = u.Timestamp.ToString("o") // ISO 8601 format
-            }).ToList();
+                // Get all location updates since the specified ID
+                var updates = _playerManager.GetLocationUpdatesSince(lastUpdateId);
+                long currentUpdateId = _playerManager.GetCurrentUpdateId();
 
-            Console.WriteLine($"[LOCATION_UPDATES] Sending {updatesList.Count} updates to {session.Username} (current ID: {currentUpdateId})");
+                // Convert to a simple format for the response
+                var updatesList = updates.Select(u => new
+                {
+                    updateId = u.UpdateId,
+                    username = u.Username,
+                    x = u.X,
+                    y = u.Y,
+                    z = u.Z,
+                    timestamp = u.Timestamp.ToString("o") // ISO 8601 format
+                }).ToList();
 
-            // Send the response
-            await SendResponseAsync(session, message, MessageTypes.LOCATION_UPDATES_RESPONSE, new
+                Console.WriteLine($"[LOCATION_UPDATES] Sending {updatesList.Count} updates to {session.Username} (current ID: {currentUpdateId})");
+
+                // Send the response
+                await SendResponseAsync(session, message, MessageTypes.LOCATION_UPDATES_RESPONSE, new
+                {
+                    updates = updatesList,
+                    lastLocationUpdateId = currentUpdateId
+                });
+            }
+            catch (InvalidOperationException ex)
             {
-                updates = updatesList,
-                lastLocationUpdateId = currentUpdateId
-            });
+                // Client requested updates that are too old (already trimmed)
+                Console.WriteLine($"[LOCATION_UPDATES] Client {session.Username} requested trimmed data: {ex.Message}");
+
+                // Send error response with full resync data
+                long currentUpdateId = _playerManager.GetCurrentUpdateId();
+                var allPlayers = _playerManager.GetAllPlayerLocations();
+
+                await SendAsync(session, new Message
+                {
+                    Id = message.Id,
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "RESYNC_REQUIRED",
+                        message = "Your location data is too old. Performing full resync.",
+                        allPlayers = allPlayers,
+                        lastLocationUpdateId = currentUpdateId
+                    }
+                });
+            }
         }
     }
 }

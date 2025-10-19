@@ -28,6 +28,44 @@ namespace ClientMessageHandlers.Handlers
             string code = payload["code"]?.Value<string>() ?? "UNKNOWN_ERROR";
             string errorMessage = payload["message"]?.Value<string>() ?? "An error occurred";
 
+            // Special handling for RESYNC_REQUIRED error
+            if (code == "RESYNC_REQUIRED")
+            {
+                Debug.LogWarning($"[ErrorHandler] Resync required - applying full location data");
+
+                // Update lastLocationUpdateId
+                if (payload["lastLocationUpdateId"] != null)
+                {
+                    long updateId = payload["lastLocationUpdateId"].Value<long>();
+                    serverController.SetLastLocationUpdateId(updateId);
+                }
+
+                // Load all player locations
+                if (payload["allPlayers"] != null)
+                {
+                    var allPlayers = payload["allPlayers"] as JArray;
+                    foreach (var player in allPlayers)
+                    {
+                        string username = player["username"].Value<string>();
+                        float x = player["x"].Value<float>();
+                        float y = player["y"].Value<float>();
+                        float z = player["z"].Value<float>();
+
+                        var position = new Vector3(x, y, z);
+                        serverController.UpdatePlayerLocation(username, position);
+                    }
+                }
+
+                // Invoke success callback since resync was successful
+                if (!string.IsNullOrEmpty(message.Id))
+                {
+                    serverController.InvokeResponseSuccess(message.Id, payload);
+                }
+
+                return;
+            }
+
+            // Standard error handling for other error codes
             // Invoke the OnError event for global error handling
             serverController.InvokeError(code, errorMessage);
 

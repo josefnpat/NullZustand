@@ -27,6 +27,7 @@ namespace NullZustand
     public class LocationUpdateTracker
     {
         private long _nextUpdateId = 1;
+        private long _minAvailableUpdateId = 1;
         private readonly object _lock = new object();
         private readonly List<LocationUpdate> _updates = new List<LocationUpdate>();
         private readonly Dictionary<string, Vector3> _currentPositions = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
@@ -53,7 +54,14 @@ namespace NullZustand
                 {
                     int toRemove = _updates.Count - MAX_STORED_UPDATES;
                     _updates.RemoveRange(0, toRemove);
-                    Console.WriteLine($"[LOCATION_TRACKER] Trimmed {toRemove} old location updates");
+
+                    // Update the minimum available update ID after trimming
+                    if (_updates.Count > 0)
+                    {
+                        _minAvailableUpdateId = _updates[0].UpdateId;
+                    }
+
+                    Console.WriteLine($"[LOCATION_TRACKER] Trimmed {toRemove} old location updates (min available ID: {_minAvailableUpdateId})");
                 }
 
                 return updateId;
@@ -64,6 +72,15 @@ namespace NullZustand
         {
             lock (_lock)
             {
+                // Check if the requested update ID is too old (already trimmed)
+                if (lastUpdateId > 0 && lastUpdateId < _minAvailableUpdateId)
+                {
+                    throw new InvalidOperationException(
+                        $"Requested update ID {lastUpdateId} is too old. " +
+                        $"Minimum available update ID is {_minAvailableUpdateId}. " +
+                        $"Client needs to perform a full resync.");
+                }
+
                 return _updates.Where(u => u.UpdateId > lastUpdateId).ToList();
             }
         }
