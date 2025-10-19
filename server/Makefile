@@ -10,7 +10,7 @@ MCS = mcs
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cs) $(wildcard $(SRC_DIR)/MessageHandlers/*.cs) $(wildcard $(SRC_DIR)/MessageHandlers/Handlers/*.cs)
-UNITY_SRC = ../client/Assets/Shared/Messages.cs
+UNITY_SRC = ../client/Assets/Scripts/Shared/Messages.cs
 
 # Default target
 all: prepare $(EXE)
