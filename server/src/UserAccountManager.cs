@@ -1,18 +1,22 @@
 using System;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace NullZustand
 {
     public class UserAccount
     {
         public string Username { get; set; }
-        public string Password { get; set; }
+        public string PasswordHash { get; set; }
+        public string Salt { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        public UserAccount(string username, string password)
+        public UserAccount(string username, string passwordHash, string salt)
         {
             Username = username;
-            Password = password;
+            PasswordHash = passwordHash;
+            Salt = salt;
             CreatedAt = DateTime.UtcNow;
         }
     }
@@ -20,10 +24,39 @@ namespace NullZustand
     public class UserAccountManager
     {
         private readonly ConcurrentDictionary<string, UserAccount> _accounts;
+        private const int SALT_SIZE = 16; // 128 bits
+        private const int HASH_SIZE = 32; // 256 bits
+        private const int ITERATIONS = 10000; // PBKDF2 iterations
 
         public UserAccountManager()
         {
             _accounts = new ConcurrentDictionary<string, UserAccount>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private string GenerateSalt()
+        {
+            byte[] saltBytes = new byte[SALT_SIZE];
+            using (var rng = new RNGCryptoServiceProvider())
+            {
+                rng.GetBytes(saltBytes);
+            }
+            return Convert.ToBase64String(saltBytes);
+        }
+
+        private string HashPassword(string password, string salt)
+        {
+            byte[] saltBytes = Convert.FromBase64String(salt);
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, ITERATIONS))
+            {
+                byte[] hashBytes = pbkdf2.GetBytes(HASH_SIZE);
+                return Convert.ToBase64String(hashBytes);
+            }
+        }
+
+        private bool VerifyPassword(string password, string hash, string salt)
+        {
+            string computedHash = HashPassword(password, salt);
+            return computedHash == hash;
         }
 
         public bool RegisterUser(string username, string password, out string error)
@@ -63,8 +96,12 @@ namespace NullZustand
                 return false;
             }
 
-            // Create new account
-            var account = new UserAccount(username, password);
+            // Hash the password
+            string salt = GenerateSalt();
+            string passwordHash = HashPassword(password, salt);
+
+            // Create new account with hashed password
+            var account = new UserAccount(username, passwordHash, salt);
             if (_accounts.TryAdd(username, account))
             {
                 Console.WriteLine($"[ACCOUNT] New user registered: {username} (Total users: {_accounts.Count})");
@@ -84,9 +121,7 @@ namespace NullZustand
 
             if (_accounts.TryGetValue(username, out UserAccount account))
             {
-                // In a real application, you would use proper password hashing (e.g., bcrypt)
-                // For in-memory storage as requested, we're storing plain text
-                return account.Password == password;
+                return VerifyPassword(password, account.PasswordHash, account.Salt);
             }
 
             return false;
