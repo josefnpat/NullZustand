@@ -1,5 +1,4 @@
 using System;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace NullZustand.MessageHandlers.Handlers
@@ -12,9 +11,16 @@ namespace NullZustand.MessageHandlers.Handlers
 
     public class LoginRequestMessageHandler : MessageHandler
     {
+        private readonly SessionManager _sessionManager;
+
+        public LoginRequestMessageHandler(SessionManager sessionManager)
+        {
+            _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+        }
+
         public override string MessageType => MessageTypes.LOGIN_REQUEST;
 
-        public override async Task HandleAsync(Message message, NetworkStream stream)
+        public override async Task HandleAsync(Message message, ClientSession session)
         {
             // Extract and validate the payload
             var payload = GetPayload<LoginRequestPayload>(message);
@@ -22,7 +28,7 @@ namespace NullZustand.MessageHandlers.Handlers
             if (payload == null)
             {
                 Console.WriteLine("[WARNING] LoginRequest received with null payload");
-                await SendAsync(stream, new Message
+                await SendAsync(session, new Message
                 {
                     Type = MessageTypes.LOGIN_RESPONSE,
                     Payload = new { success = false, error = "Invalid payload" }
@@ -30,7 +36,7 @@ namespace NullZustand.MessageHandlers.Handlers
                 return;
             }
 
-            Console.WriteLine($"[LOGIN] User '{payload.username}' attempting to login");
+            Console.WriteLine($"[LOGIN] Session {session.SessionId} - User '{payload.username}' attempting to login");
 
             // TODO: Implement actual authentication logic here
             // For now, accept any non-empty username
@@ -38,10 +44,12 @@ namespace NullZustand.MessageHandlers.Handlers
 
             if (isValid)
             {
+                _sessionManager.AuthenticateSession(session.SessionId, payload.username);
+
                 string sessionToken = Guid.NewGuid().ToString("N").Substring(0, 16);
                 Console.WriteLine($"[LOGIN] User '{payload.username}' logged in successfully with token: {sessionToken}");
 
-                await SendAsync(stream, new Message
+                await SendAsync(session, new Message
                 {
                     Type = MessageTypes.LOGIN_RESPONSE,
                     Payload = new { success = true, sessionToken = sessionToken, username = payload.username }
@@ -51,7 +59,7 @@ namespace NullZustand.MessageHandlers.Handlers
             {
                 Console.WriteLine($"[LOGIN] User '{payload.username}' login failed - invalid credentials");
 
-                await SendAsync(stream, new Message
+                await SendAsync(session, new Message
                 {
                     Type = MessageTypes.LOGIN_RESPONSE,
                     Payload = new { success = false, error = "Invalid username or password" }

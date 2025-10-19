@@ -82,16 +82,16 @@ namespace NullZustand
 
     public class Server
     {
-        private const int BUFFER_SIZE = ServerConstants.BUFFER_SIZE;
-
         private TcpListener _listener;
         private MessageHandlerRegistry _handlerRegistry;
+        private SessionManager _sessionManager;
 
         public async Task StartAsync(int port)
         {
             try
             {
-                // Initialize and register message handlers
+                // Initialize session manager and message handlers
+                _sessionManager = new SessionManager();
                 InitializeHandlers();
 
                 _listener = new TcpListener(IPAddress.Any, port);
@@ -117,25 +117,20 @@ namespace NullZustand
 
             // Register message handlers - easily comment out any handler to disable it
             _handlerRegistry.RegisterHandler(new PingMessageHandler());
-            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler());
-
-            // Example of how easy it is to add/remove handlers:
-            // _handlerRegistry.RegisterHandler(new ExampleMessageHandler());
-
-            // Add new handlers here as needed:
-            // _handlerRegistry.RegisterHandler(new SomeOtherMessageHandler());
+            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager));
         }
 
         private async Task HandleClientAsync(TcpClient client)
         {
-            Console.WriteLine("[CLIENT] Connected");
-            NetworkStream stream = client.GetStream();
+            ClientSession session = _sessionManager.RegisterSession(client);
+
+            Console.WriteLine($"[CLIENT] Connected: {session}");
 
             try
             {
                 while (client.Connected)
                 {
-                    string json = await MessageFraming.ReadMessageAsync(stream);
+                    string json = await MessageFraming.ReadMessageAsync(session.Stream);
                     if (json == null)
                     {
                         break;
@@ -145,7 +140,7 @@ namespace NullZustand
 
                     if (message != null)
                     {
-                        await ProcessMessageAsync(message, stream);
+                        await ProcessMessageAsync(message, session);
                     }
                     else
                     {
@@ -155,11 +150,13 @@ namespace NullZustand
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Client handling failed: {ex.Message}");
+                Console.WriteLine($"[ERROR] Client handling failed for session {session.SessionId}: {ex.Message}");
             }
             finally
             {
-                Console.WriteLine("[CLIENT] Disconnected");
+                Console.WriteLine($"[CLIENT] Disconnected: {session}");
+                _sessionManager.RemoveSession(session.SessionId);
+
                 try
                 {
                     client.Close();
@@ -171,13 +168,13 @@ namespace NullZustand
             }
         }
 
-        private async Task ProcessMessageAsync(Message message, NetworkStream stream)
+        private async Task ProcessMessageAsync(Message message, ClientSession session)
         {
             try
             {
-                Console.WriteLine($"[MESSAGE] Received: {message.Type}");
+                Console.WriteLine($"[MESSAGE] Received from {session.SessionId}: {message.Type}");
 
-                bool handled = await _handlerRegistry.ProcessMessageAsync(message, stream);
+                bool handled = await _handlerRegistry.ProcessMessageAsync(message, session);
                 if (!handled)
                 {
                     Console.WriteLine($"[WARNING] No handler available for message type: {message.Type}");

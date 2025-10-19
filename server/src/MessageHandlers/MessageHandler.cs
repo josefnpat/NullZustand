@@ -1,6 +1,4 @@
 using System;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -10,7 +8,7 @@ namespace NullZustand.MessageHandlers
     public abstract class MessageHandler : IMessageHandler
     {
         public abstract string MessageType { get; }
-        public abstract Task HandleAsync(Message message, NetworkStream stream);
+        public abstract Task HandleAsync(Message message, ClientSession session);
 
         protected T GetPayload<T>(Message message)
         {
@@ -36,17 +34,17 @@ namespace NullZustand.MessageHandlers
             return JsonConvert.DeserializeObject<T>(json);
         }
 
-        protected async Task SendAsync(NetworkStream stream, Message message)
+        protected async Task SendAsync(ClientSession session, Message message)
         {
             try
             {
                 string json = JsonConvert.SerializeObject(message);
-                await MessageFraming.WriteMessageAsync(stream, json);
-                Console.WriteLine($"[MESSAGE] Sent: {message.Type}");
+                await MessageFraming.WriteMessageAsync(session.Stream, json);
+                Console.WriteLine($"[MESSAGE] Sent to {session.SessionId}: {message.Type}");
             }
             catch (System.Exception ex)
             {
-                Console.WriteLine($"[ERROR] Failed to send message: {ex.Message}");
+                Console.WriteLine($"[ERROR] Failed to send message to {session.SessionId}: {ex.Message}");
             }
         }
     }

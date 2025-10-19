@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace NullZustand.MessageHandlers
@@ -18,14 +17,14 @@ namespace NullZustand.MessageHandlers
             Console.WriteLine($"[HANDLER] Registered: {handler.MessageType}");
         }
 
-        public async Task<bool> ProcessMessageAsync(Message message, NetworkStream stream)
+        public async Task<bool> ProcessMessageAsync(Message message, ClientSession session)
         {
             if (_handlers.TryGetValue(message.Type, out IMessageHandler handler))
             {
                 try
                 {
-                    Console.WriteLine($"[MESSAGE] Processing: {message.Type}");
-                    await handler.HandleAsync(message, stream);
+                    Console.WriteLine($"[MESSAGE] Processing {message.Type} for session {session.SessionId}");
+                    await handler.HandleAsync(message, session);
                     return true;
                 }
                 catch (Exception ex)
@@ -37,11 +36,6 @@ namespace NullZustand.MessageHandlers
 
             Console.WriteLine($"[WARNING] No handler found for message type: {message.Type}");
             return false;
-        }
-
-        public string[] GetRegisteredMessageTypes()
-        {
-            return new List<string>(_handlers.Keys).ToArray();
         }
     }
 }

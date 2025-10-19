@@ -1,5 +1,4 @@
 using System;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace NullZustand.MessageHandlers.Handlers
@@ -8,14 +7,14 @@ namespace NullZustand.MessageHandlers.Handlers
     {
         public override string MessageType => MessageTypes.PING;
 
-        public override async Task HandleAsync(Message message, NetworkStream stream)
+        public override async Task HandleAsync(Message message, ClientSession session)
         {
             Message response = new Message
             {
                 Type = MessageTypes.PONG,
                 Payload = new { time = DateTime.UtcNow }
             };
-            await SendAsync(stream, response);
+            await SendAsync(session, response);
         }
     }
 }
