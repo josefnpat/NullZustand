@@ -23,6 +23,8 @@ public class ServerController : MonoBehaviour
     private Dictionary<string, Vector3> _playerLocations = new Dictionary<string, Vector3>();
     private ClientMessageHandlerRegistry _handlerRegistry;
     private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
+    private float _lastCallbackCleanupTime = 0f;
+    private const float CALLBACK_CLEANUP_INTERVAL = 5f; // Clean up every 5 seconds
 
     public event Action<string, Vector3> OnLocationUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -37,6 +39,21 @@ public class ServerController : MonoBehaviour
     {
         LoadPinnedCertificate();
         _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
+    }
+
+    void Update()
+    {
+        // Periodically clean up expired callbacks to prevent memory leaks
+        if (Time.unscaledTime - _lastCallbackCleanupTime > CALLBACK_CLEANUP_INTERVAL)
+        {
+            _lastCallbackCleanupTime = Time.unscaledTime;
+            int cleanedUp = _responseCallbacks.CleanupExpiredCallbacks();
+
+            if (cleanedUp > 0)
+            {
+                Debug.LogWarning($"[ServerController] Cleaned up {cleanedUp} expired callback(s)");
+            }
+        }
     }
 
     private void InitializeHandlers()
@@ -302,6 +319,7 @@ public class ServerController : MonoBehaviour
             _client = null;
             _lastLocationUpdateId = 0;
             _playerLocations.Clear();
+            _responseCallbacks.CleanupExpiredCallbacks(0f);
         }
     }
 
