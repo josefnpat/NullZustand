@@ -7,6 +7,12 @@ namespace NullZustand.MessageHandlers
     public class MessageHandlerRegistry
     {
         private readonly Dictionary<string, IMessageHandler> _handlers = new Dictionary<string, IMessageHandler>();
+        private readonly RateLimiter _rateLimiter;
+
+        public MessageHandlerRegistry()
+        {
+            _rateLimiter = new RateLimiter();
+        }
 
         public void RegisterHandler(IMessageHandler handler)
         {
@@ -20,6 +26,13 @@ namespace NullZustand.MessageHandlers
 
         public async Task<bool> ProcessMessageAsync(Message message, ClientSession session)
         {
+            // Check rate limit before processing any message
+            if (!_rateLimiter.AllowRequest(session.SessionId, out string rateLimitError))
+            {
+                await SendRateLimitErrorAsync(session, rateLimitError);
+                return false;
+            }
+
             if (_handlers.TryGetValue(message.Type, out IMessageHandler handler))
             {
                 if (handler.RequiresAuthentication && !session.IsAuthenticated)
@@ -44,6 +57,34 @@ namespace NullZustand.MessageHandlers
 
             Console.WriteLine($"[WARNING] No handler found for message type: {message.Type}");
             return false;
+        }
+
+        public void OnSessionDisconnect(string sessionId)
+        {
+            _rateLimiter.ClearSession(sessionId);
+        }
+
+        private async Task SendRateLimitErrorAsync(ClientSession session, string errorMessage)
+        {
+            try
+            {
+                var message = new Message
+                {
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "RATE_LIMIT_EXCEEDED",
+                        message = errorMessage
+                    }
+                };
+
+                string json = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+                await MessageFraming.WriteMessageAsync(session.Stream, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to send rate limit error: {ex.Message}");
+            }
         }
 
         private async Task SendAuthenticationRequiredAsync(ClientSession session, string messageType)

@@ -198,6 +198,7 @@ namespace NullZustand
                 {
                     Console.WriteLine($"[CLIENT] Disconnected: {session}");
                     _sessionManager.RemoveSession(session.SessionId);
+                    _handlerRegistry.OnSessionDisconnect(session.SessionId);
                 }
 
                 try
