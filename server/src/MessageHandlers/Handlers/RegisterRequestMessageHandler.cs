@@ -28,11 +28,8 @@ namespace NullZustand.MessageHandlers.Handlers
             if (payload == null)
             {
                 Console.WriteLine("[WARNING] RegisterRequest received with null payload");
-                await SendAsync(session, new Message
-                {
-                    Type = MessageTypes.REGISTER_RESPONSE,
-                    Payload = new { success = false, error = "Invalid payload" }
-                });
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = false, error = "Invalid payload" });
                 return;
             }
 
@@ -45,21 +42,15 @@ namespace NullZustand.MessageHandlers.Handlers
             {
                 Console.WriteLine($"[REGISTER] User '{payload.username}' registered successfully");
 
-                await SendAsync(session, new Message
-                {
-                    Type = MessageTypes.REGISTER_RESPONSE,
-                    Payload = new { success = true, username = payload.username }
-                });
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = true, username = payload.username });
             }
             else
             {
                 Console.WriteLine($"[REGISTER] Registration failed for '{payload.username}': {error}");
 
-                await SendAsync(session, new Message
-                {
-                    Type = MessageTypes.REGISTER_RESPONSE,
-                    Payload = new { success = false, error = error }
-                });
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = false, error = error });
             }
         }
     }

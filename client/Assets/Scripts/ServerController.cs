@@ -6,9 +6,10 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using NullZustand;
 using System.Collections.Generic;
+using ClientMessageHandlers;
+using ClientMessageHandlers.Handlers;
 
 public class ServerController : MonoBehaviour
 {
@@ -20,12 +21,16 @@ public class ServerController : MonoBehaviour
     private X509Certificate2 _pinnedCertificate;
     private long _lastLocationUpdateId = 0;
     private Dictionary<string, Vector3> _playerLocations = new Dictionary<string, Vector3>();
+    private ClientMessageHandlerRegistry _handlerRegistry;
+    private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
 
     public event Action<string, Vector3> OnLocationUpdate;
+    public event Action<string, string> OnError; // (errorCode, errorMessage)
 
     void Awake()
     {
         ServiceLocator.Register<ServerController>(this);
+        InitializeHandlers();
     }
 
     void Start()
@@ -34,49 +39,52 @@ public class ServerController : MonoBehaviour
         _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
     }
 
-    public async void Register(string username, string password)
+    private void InitializeHandlers()
     {
-        await SendMessageAsync(new Message
-        {
-            Type = MessageTypes.REGISTER_REQUEST,
-            Payload = new { username = username, password = password }
-        });
+        _handlerRegistry = new ClientMessageHandlerRegistry();
+
+        // Register message handlers - easily comment out any handler to disable it
+        _handlerRegistry.RegisterHandler(new RegisterHandler());
+        _handlerRegistry.RegisterHandler(new LoginHandler());
+        _handlerRegistry.RegisterHandler(new PingHandler());
+        _handlerRegistry.RegisterHandler(new UpdatePositionHandler());
+        _handlerRegistry.RegisterHandler(new LocationUpdatesHandler());
+        _handlerRegistry.RegisterHandler(new ErrorHandler());
     }
 
-    public async void Login(string username, string password)
+    public async void Register(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        await SendMessageAsync(new Message
-        {
-            Type = MessageTypes.LOGIN_REQUEST,
-            Payload = new { username = username, password = password }
-        });
+        var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.REGISTER_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
     }
 
-    public async void SendPing()
+    public async void Login(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        await SendMessageAsync(new Message
-        {
-            Type = MessageTypes.PING,
-            Payload = new { }
-        });
+        var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
     }
 
-    public async void UpdatePosition(float x, float y, float z)
+    public async void SendPing(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        await SendMessageAsync(new Message
-        {
-            Type = MessageTypes.UPDATE_POSITION_REQUEST,
-            Payload = new { x = x, y = y, z = z }
-        });
+        var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.PING);
+        if (handler != null)
+            await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
-    public async void GetLocationUpdates()
+    public async void UpdatePosition(float x, float y, float z, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        await SendMessageAsync(new Message
-        {
-            Type = MessageTypes.LOCATION_UPDATES_REQUEST,
-            Payload = new { lastUpdateId = _lastLocationUpdateId }
-        });
+        var handler = _handlerRegistry.GetHandler<IClientHandler<float, float, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, x, y, z, onSuccess, onFailure);
+    }
+
+    public async void GetLocationUpdates(Action<object> onSuccess = null, Action<string> onFailure = null)
+    {
+        var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.LOCATION_UPDATES_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
     private void LoadPinnedCertificate()
@@ -214,67 +222,51 @@ public class ServerController : MonoBehaviour
     {
         Debug.Log($"Received: {message.Type} | Payload: {JsonConvert.SerializeObject(message.Payload)}");
 
-        try
+        bool handled = _handlerRegistry.ProcessMessage(message, this);
+        if (!handled)
         {
-            JObject payload = JObject.FromObject(message.Payload);
-
-            // Handle LOGIN_RESPONSE - initial sync of all players
-            if (message.Type == MessageTypes.LOGIN_RESPONSE)
-            {
-                if (payload["lastLocationUpdateId"] != null)
-                {
-                    _lastLocationUpdateId = payload["lastLocationUpdateId"].Value<long>();
-                }
-
-                if (payload["allPlayers"] != null)
-                {
-                    var allPlayers = payload["allPlayers"] as JArray;
-                    foreach (var player in allPlayers)
-                    {
-                        string username = player["username"].Value<string>();
-                        float x = player["x"].Value<float>();
-                        float y = player["y"].Value<float>();
-                        float z = player["z"].Value<float>();
-
-                        var position = new Vector3(x, y, z);
-                        _playerLocations[username] = position;
-                        OnLocationUpdate?.Invoke(username, position);
-                    }
-                }
-            }
-
-            // Handle LOCATION_UPDATES_RESPONSE - incremental updates
-            if (message.Type == MessageTypes.LOCATION_UPDATES_RESPONSE)
-            {
-                if (payload["lastLocationUpdateId"] != null)
-                {
-                    _lastLocationUpdateId = payload["lastLocationUpdateId"].Value<long>();
-                }
-
-                if (payload["updates"] != null)
-                {
-                    var updates = payload["updates"] as JArray;
-                    foreach (var update in updates)
-                    {
-                        string username = update["username"].Value<string>();
-                        float x = update["x"].Value<float>();
-                        float y = update["y"].Value<float>();
-                        float z = update["z"].Value<float>();
-
-                        var position = new Vector3(x, y, z);
-                        _playerLocations[username] = position;
-                        OnLocationUpdate?.Invoke(username, position);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"Failed to process message: {ex.Message}");
+            Debug.LogWarning($"[CLIENT] No handler for message type: {message.Type}");
         }
     }
 
-    private async Task SendMessageAsync(Message message)
+    // Public methods for handlers to use
+    public void SetLastLocationUpdateId(long updateId)
+    {
+        _lastLocationUpdateId = updateId;
+    }
+
+    public long GetLastLocationUpdateId()
+    {
+        return _lastLocationUpdateId;
+    }
+
+    public void UpdatePlayerLocation(string username, Vector3 position)
+    {
+        _playerLocations[username] = position;
+        OnLocationUpdate?.Invoke(username, position);
+    }
+
+    public void RegisterResponseCallbacks(string messageId, Action<object> onSuccess, Action<string> onFailure)
+    {
+        _responseCallbacks.RegisterCallbacks(messageId, onSuccess, onFailure);
+    }
+
+    public void InvokeResponseSuccess(string messageId, object payload)
+    {
+        _responseCallbacks.InvokeSuccess(messageId, payload);
+    }
+
+    public void InvokeResponseFailure(string messageId, string error)
+    {
+        _responseCallbacks.InvokeFailure(messageId, error);
+    }
+
+    public void InvokeError(string code, string message)
+    {
+        OnError?.Invoke(code, message);
+    }
+
+    public async Task SendMessageAsync(Message message)
     {
         try
         {

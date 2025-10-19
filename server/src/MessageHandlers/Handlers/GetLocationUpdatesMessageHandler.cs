@@ -50,15 +50,13 @@ namespace NullZustand.MessageHandlers.Handlers
                 timestamp = u.Timestamp.ToString("o") // ISO 8601 format
             }).ToList();
 
+            Console.WriteLine($"[LOCATION_UPDATES] Sending {updatesList.Count} updates to {session.Username} (current ID: {currentUpdateId})");
+
             // Send the response
-            await SendAsync(session, new Message
+            await SendResponseAsync(session, message, MessageTypes.LOCATION_UPDATES_RESPONSE, new
             {
-                Type = MessageTypes.LOCATION_UPDATES_RESPONSE,
-                Payload = new
-                {
-                    updates = updatesList,
-                    lastLocationUpdateId = currentUpdateId
-                }
+                updates = updatesList,
+                lastLocationUpdateId = currentUpdateId
             });
         }
     }

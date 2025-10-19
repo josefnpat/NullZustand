@@ -8,6 +8,7 @@ namespace NullZustand
     [Serializable]
     public class Message
     {
+        public string Id { get; set; }
         public string Type { get; set; }
         public object Payload { get; set; }
     }

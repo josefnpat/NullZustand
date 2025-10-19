@@ -9,12 +9,8 @@ namespace NullZustand.MessageHandlers.Handlers
 
         public override async Task HandleAsync(Message message, ClientSession session)
         {
-            Message response = new Message
-            {
-                Type = MessageTypes.PONG,
-                Payload = new { time = DateTime.UtcNow }
-            };
-            await SendAsync(session, response);
+            await SendResponseAsync(session, message, MessageTypes.PONG,
+                new { time = DateTime.UtcNow });
         }
     }
 }

@@ -46,11 +46,8 @@ namespace NullZustand.MessageHandlers.Handlers
             Console.WriteLine($"[POSITION] {session.Username} moved to ({payload.x:F2}, {payload.y:F2}, {payload.z:F2}) [UpdateID: {updateId}]");
 
             // Send acknowledgment back to client
-            await SendAsync(session, new Message
-            {
-                Type = MessageTypes.UPDATE_POSITION_RESPONSE,
-                Payload = new { success = true, updateId = updateId }
-            });
+            await SendResponseAsync(session, message, MessageTypes.UPDATE_POSITION_RESPONSE,
+                new { success = true, updateId = updateId });
         }
     }
 }

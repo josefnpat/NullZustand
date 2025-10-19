@@ -32,11 +32,8 @@ namespace NullZustand.MessageHandlers.Handlers
             if (payload == null)
             {
                 Console.WriteLine("[WARNING] LoginRequest received with null payload");
-                await SendAsync(session, new Message
-                {
-                    Type = MessageTypes.LOGIN_RESPONSE,
-                    Payload = new { success = false, error = "Invalid payload" }
-                });
+                await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE,
+                    new { success = false, error = "Invalid payload" });
                 return;
             }
 
@@ -56,27 +53,20 @@ namespace NullZustand.MessageHandlers.Handlers
                 long currentUpdateId = _playerManager.GetCurrentUpdateId();
 
                 // Client can find their own position in allPlayers array
-                await SendAsync(session, new Message
+                await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE, new
                 {
-                    Type = MessageTypes.LOGIN_RESPONSE,
-                    Payload = new
-                    {
-                        success = true,
-                        sessionToken = sessionToken,
-                        allPlayers = allPlayers,
-                        lastLocationUpdateId = currentUpdateId
-                    }
+                    success = true,
+                    sessionToken = sessionToken,
+                    allPlayers = allPlayers,
+                    lastLocationUpdateId = currentUpdateId
                 });
             }
             else
             {
                 Console.WriteLine($"[LOGIN] User '{payload.username}' login failed - invalid credentials");
 
-                await SendAsync(session, new Message
-                {
-                    Type = MessageTypes.LOGIN_RESPONSE,
-                    Payload = new { success = false, error = "Invalid username or password" }
-                });
+                await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE,
+                    new { success = false, error = "Invalid username or password" });
             }
         }
     }

@@ -48,5 +48,15 @@ namespace NullZustand.MessageHandlers
                 Console.WriteLine($"[ERROR] Failed to send message to {session.SessionId}: {ex.Message}");
             }
         }
+
+        protected async Task SendResponseAsync(ClientSession session, Message requestMessage, string responseType, object payload)
+        {
+            await SendAsync(session, new Message
+            {
+                Id = requestMessage.Id,
+                Type = responseType,
+                Payload = payload
+            });
+        }
     }
 }

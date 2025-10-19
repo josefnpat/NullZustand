@@ -1,0 +1,68 @@
+using System;
+using System.Threading.Tasks;
+using NullZustand;
+using Newtonsoft.Json.Linq;
+using UnityEngine;
+
+namespace ClientMessageHandlers.Handlers
+{
+    public class LocationUpdatesHandler : ClientHandler, IClientHandlerNoParam
+    {
+        public override string RequestMessageType => MessageTypes.LOCATION_UPDATES_REQUEST;
+        public override string ResponseMessageType => MessageTypes.LOCATION_UPDATES_RESPONSE;
+
+        public async Task<string> SendRequestAsync(ServerController serverController, Action<object> onSuccess = null, Action<string> onFailure = null)
+        {
+            string messageId = GenerateMessageId();
+            serverController.RegisterResponseCallbacks(messageId, onSuccess, onFailure);
+
+            long lastUpdateId = serverController.GetLastLocationUpdateId();
+            await serverController.SendMessageAsync(new Message
+            {
+                Id = messageId,
+                Type = MessageTypes.LOCATION_UPDATES_REQUEST,
+                Payload = new { lastUpdateId = lastUpdateId }
+            });
+
+            return messageId;
+        }
+
+        public override void HandleResponse(Message message, ServerController serverController)
+        {
+            JObject payload = GetPayloadAsJObject(message);
+            if (payload == null)
+            {
+                Debug.LogWarning($"[{ResponseMessageType}] Received null or invalid payload");
+                if (message.Id != null)
+                    serverController.InvokeResponseFailure(message.Id, "Invalid payload");
+                return;
+            }
+
+            // Update lastLocationUpdateId
+            if (payload["lastLocationUpdateId"] != null)
+            {
+                long updateId = payload["lastLocationUpdateId"].Value<long>();
+                serverController.SetLastLocationUpdateId(updateId);
+            }
+
+            // Apply incremental updates
+            if (payload["updates"] != null)
+            {
+                var updates = payload["updates"] as JArray;
+                foreach (var update in updates)
+                {
+                    string username = update["username"].Value<string>();
+                    float x = update["x"].Value<float>();
+                    float y = update["y"].Value<float>();
+                    float z = update["z"].Value<float>();
+
+                    var position = new Vector3(x, y, z);
+                    serverController.UpdatePlayerLocation(username, position);
+                }
+            }
+
+            serverController.InvokeResponseSuccess(message.Id, payload);
+        }
+    }
+}
+
