@@ -24,6 +24,23 @@ namespace NullZustand.MessageHandlers.Handlers
         // Requires authentication - only logged in players can update position
         public override bool RequiresAuthentication => true;
 
+        private bool IsValidCoordinate(float value)
+        {
+            // Check for NaN and infinity
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return false;
+            }
+
+            // Check bounds
+            if (value < ValidationConstants.MIN_COORDINATE || value > ValidationConstants.MAX_COORDINATE)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         public override async Task HandleAsync(Message message, ClientSession session)
         {
             var payload = GetPayload<UpdatePositionPayload>(message);
@@ -37,6 +54,24 @@ namespace NullZustand.MessageHandlers.Handlers
             if (session.Player == null)
             {
                 Console.WriteLine($"[WARNING] UpdatePosition received but session has no player: {session.SessionId}");
+                return;
+            }
+
+            // Validate coordinates
+            if (!IsValidCoordinate(payload.x) || !IsValidCoordinate(payload.y) || !IsValidCoordinate(payload.z))
+            {
+                Console.WriteLine($"[WARNING] Invalid coordinates from {session.Username}: ({payload.x}, {payload.y}, {payload.z})");
+
+                await SendAsync(session, new Message
+                {
+                    Id = message.Id,
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "INVALID_COORDINATES",
+                        message = $"Invalid coordinates. Values must be valid numbers between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}."
+                    }
+                });
                 return;
             }
 
