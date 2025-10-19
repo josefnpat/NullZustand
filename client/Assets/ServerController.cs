@@ -50,7 +50,7 @@ public class ServerController : MonoBehaviour
 
     private async Task ListenForMessagesAsync()
     {
-        var buffer = new byte[4096];
+        byte[] buffer = new byte[4096];
 
         try
         {
@@ -59,8 +59,8 @@ public class ServerController : MonoBehaviour
                 int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead == 0) break;
 
-                var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                var message = JsonConvert.DeserializeObject<Message>(json);
+                string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                Message message = JsonConvert.DeserializeObject<Message>(json);
 
                 HandleMessage(message);
             }
@@ -91,8 +91,8 @@ public class ServerController : MonoBehaviour
                 return;
             }
 
-            var json = JsonConvert.SerializeObject(message);
-            var bytes = Encoding.UTF8.GetBytes(json);
+            string json = JsonConvert.SerializeObject(message);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
             await _stream.WriteAsync(bytes, 0, bytes.Length);
         }
         catch (Exception ex)

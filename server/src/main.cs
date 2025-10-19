@@ -12,7 +12,7 @@ namespace NullZustand
     {
         static void Main(string[] args)
         {
-            var server = new Server();
+            Server server = new Server();
             try
             {
                 server.StartAsync(7777).GetAwaiter().GetResult();
@@ -38,7 +38,7 @@ namespace NullZustand
 
                 while (true)
                 {
-                    var client = await _listener.AcceptTcpClientAsync();
+                    TcpClient client = await _listener.AcceptTcpClientAsync();
                     _ = HandleClientAsync(client);
                 }
             }
@@ -52,8 +52,8 @@ namespace NullZustand
         private async Task HandleClientAsync(TcpClient client)
         {
             Console.WriteLine("Client connected.");
-            var stream = client.GetStream();
-            var buffer = new byte[4096];
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = new byte[4096];
 
             try
             {
@@ -62,8 +62,8 @@ namespace NullZustand
                     int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead == 0) break;
 
-                    var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    var message = JsonConvert.DeserializeObject<Message>(json);
+                    string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    Message message = JsonConvert.DeserializeObject<Message>(json);
 
                     await ProcessMessageAsync(message, stream);
                 }
@@ -121,8 +121,8 @@ namespace NullZustand
         {
             try
             {
-                var json = JsonConvert.SerializeObject(message);
-                var bytes = Encoding.UTF8.GetBytes(json);
+                string json = JsonConvert.SerializeObject(message);
+                byte[] bytes = Encoding.UTF8.GetBytes(json);
                 await stream.WriteAsync(bytes, 0, bytes.Length);
             }
             catch (Exception ex)
