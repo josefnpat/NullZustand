@@ -18,6 +18,7 @@ namespace NullZustand
         public const string PONG = "Pong";
         public const string LOGIN_REQUEST = "LoginRequest";
         public const string LOGIN_RESPONSE = "LoginResponse";
+        public const string ERROR = "Error";
     }
 
     public static class ServerConstants

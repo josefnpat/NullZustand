@@ -8,6 +8,7 @@ namespace NullZustand.MessageHandlers
     public abstract class MessageHandler : IMessageHandler
     {
         public abstract string MessageType { get; }
+        public virtual bool RequiresAuthentication => false;
         public abstract Task HandleAsync(Message message, ClientSession session);
 
         protected T GetPayload<T>(Message message)
