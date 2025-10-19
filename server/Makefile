@@ -1,5 +1,5 @@
 # Project settings
-PROJECT_NAME = NullZustand
+PROJECT_NAME = NullZustand-Server
 SRC_DIR = src
 BUILD_DIR = build
 EXE = $(BUILD_DIR)/$(PROJECT_NAME).exe

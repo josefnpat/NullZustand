@@ -56,12 +56,6 @@ namespace NullZustand
                 return false;
             }
 
-            if (password.Length < 6)
-            {
-                error = "Password must be at least 6 characters long";
-                return false;
-            }
-
             // Check if user already exists
             if (_accounts.ContainsKey(username))
             {

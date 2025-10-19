@@ -17,7 +17,7 @@ namespace NullZustand
         public static readonly string SERVER_CERT_PATH = Path.Combine("build", "server.pfx");
     }
 
-    public class Program
+    public class NullZustand
     {
         static void Main(string[] args)
         {
@@ -78,7 +78,7 @@ namespace NullZustand
         private static void ShowHelp()
         {
             Console.WriteLine("NullZustand Server");
-            Console.WriteLine("Usage: NullZustand.exe [options]");
+            Console.WriteLine("Usage: NullZustand-Server.exe [options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine($"  -p, --port <number>    Port number to listen on (default: {ServerConstants.DEFAULT_PORT})");
@@ -93,6 +93,7 @@ namespace NullZustand
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;
         private UserAccountManager _accountManager;
+        private PlayerManager _playerManager;
         private X509Certificate2 _serverCertificate;
 
         public async Task StartAsync(int port)
@@ -103,7 +104,8 @@ namespace NullZustand
                 LoadCertificate();
 
                 // Initialize managers and message handlers
-                _sessionManager = new SessionManager();
+                _playerManager = new PlayerManager();
+                _sessionManager = new SessionManager(_playerManager);
                 _accountManager = new UserAccountManager();
                 InitializeHandlers();
 
@@ -147,6 +149,7 @@ namespace NullZustand
             _handlerRegistry.RegisterHandler(new PingMessageHandler());
             _handlerRegistry.RegisterHandler(new RegisterRequestMessageHandler(_accountManager));
             _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager));
+            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
         }
 
         private async Task HandleClientAsync(TcpClient client)

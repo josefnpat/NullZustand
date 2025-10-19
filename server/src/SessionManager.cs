@@ -8,10 +8,12 @@ namespace NullZustand
     public class SessionManager
     {
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
+        private readonly PlayerManager _playerManager;
 
-        public SessionManager()
+        public SessionManager(PlayerManager playerManager)
         {
             _sessions = new ConcurrentDictionary<string, ClientSession>();
+            _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
         }
 
         public ClientSession RegisterSession(TcpClient client, Stream stream)
@@ -31,7 +33,9 @@ namespace NullZustand
         {
             if (_sessions.TryGetValue(sessionId, out ClientSession session))
             {
-                session.Authenticate(username);
+                // Get or create the persistent player object
+                Player player = _playerManager.GetOrCreatePlayer(username);
+                session.Authenticate(username, player);
                 Console.WriteLine($"[SESSION] Authenticated: {session}");
             }
         }

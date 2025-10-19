@@ -55,6 +55,15 @@ public class ServerController : MonoBehaviour
         });
     }
 
+    public async void UpdatePosition(float x, float y, float z)
+    {
+        await SendMessageAsync(new Message
+        {
+            Type = MessageTypes.UPDATE_POSITION_REQUEST,
+            Payload = new { x = x, y = y, z = z }
+        });
+    }
+
     private void LoadPinnedCertificate()
     {
         try

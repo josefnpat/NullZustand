@@ -11,6 +11,7 @@ namespace NullZustand
         public Stream Stream { get; }
         public bool IsAuthenticated { get; set; }
         public string Username { get; set; }
+        public Player Player { get; set; }
         public string RemoteAddress { get; }
 
         public ClientSession(TcpClient client, Stream stream)
@@ -29,9 +30,10 @@ namespace NullZustand
             }
         }
 
-        public void Authenticate(string username)
+        public void Authenticate(string username, Player player)
         {
             Username = username;
+            Player = player ?? throw new ArgumentNullException(nameof(player));
             IsAuthenticated = true;
         }
 
@@ -39,7 +41,8 @@ namespace NullZustand
         {
             string auth = IsAuthenticated ? $"Authenticated as {Username}" : "Guest";
             string address = RemoteAddress ?? "Unknown";
-            return $"[Session {SessionId}] {address} - {auth}";
+            string position = Player != null ? $" @ {Player.Position}" : "";
+            return $"[Session {SessionId}] {address} - {auth}{position}";
         }
     }
 }

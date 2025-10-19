@@ -20,6 +20,8 @@ namespace NullZustand
         public const string REGISTER_RESPONSE = "RegisterResponse";
         public const string LOGIN_REQUEST = "LoginRequest";
         public const string LOGIN_RESPONSE = "LoginResponse";
+        public const string UPDATE_POSITION_REQUEST = "UpdatePositionRequest";
+        public const string UPDATE_POSITION_RESPONSE = "UpdatePositionResponse";
         public const string ERROR = "Error";
     }
 
