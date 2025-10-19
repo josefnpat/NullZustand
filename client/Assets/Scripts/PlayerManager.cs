@@ -30,4 +30,25 @@ public class PlayerManager : MonoBehaviour
         }
         playerController.SetPosition(position);
     }
+
+    public void ClearAllPlayers()
+    {
+        foreach (var controller in _playerControllers.Values)
+        {
+            if (controller != null && controller.gameObject != null)
+            {
+                Destroy(controller.gameObject);
+            }
+        }
+        _playerControllers.Clear();
+    }
+
+    void OnDestroy()
+    {
+        if (_serverController != null)
+        {
+            _serverController.OnLocationUpdate -= OnLocationUpdate;
+        }
+        ClearAllPlayers();
+    }
 }
