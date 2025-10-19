@@ -37,15 +37,15 @@ namespace NullZustand
                 return false;
             }
 
-            if (username.Length < 3)
+            if (username.Length < ValidationConstants.MIN_USERNAME_LENGTH)
             {
-                error = "Username must be at least 3 characters long";
+                error = $"Username must be at least {ValidationConstants.MIN_USERNAME_LENGTH} characters long";
                 return false;
             }
 
-            if (username.Length > 20)
+            if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
             {
-                error = "Username must be at most 20 characters long";
+                error = $"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters long";
                 return false;
             }
 

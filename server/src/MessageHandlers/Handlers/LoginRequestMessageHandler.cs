@@ -37,6 +37,23 @@ namespace NullZustand.MessageHandlers.Handlers
                 return;
             }
 
+            // Validate input lengths to prevent abuse
+            if (payload.username != null && payload.username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
+            {
+                Console.WriteLine($"[LOGIN] Rejected overly long username from {session.SessionId}");
+                await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE,
+                    new { success = false, error = "Invalid username or password" });
+                return;
+            }
+
+            if (payload.password != null && payload.password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
+            {
+                Console.WriteLine($"[LOGIN] Rejected overly long password from {session.SessionId}");
+                await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE,
+                    new { success = false, error = "Invalid username or password" });
+                return;
+            }
+
             Console.WriteLine($"[LOGIN] Session {session.SessionId} - User '{payload.username}' attempting to login");
 
             bool isValid = _accountManager.ValidateCredentials(payload.username, payload.password);

@@ -20,6 +20,20 @@ namespace NullZustand.MessageHandlers.Handlers
 
         public override string MessageType => MessageTypes.REGISTER_REQUEST;
 
+        private bool ContainsInvalidCharacters(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return false;
+
+            // Check for control characters that could cause issues
+            foreach (char c in input)
+            {
+                if (char.IsControl(c))
+                    return true;
+            }
+            return false;
+        }
+
         public override async Task HandleAsync(Message message, ClientSession session)
         {
             // Extract and validate the payload
@@ -30,6 +44,32 @@ namespace NullZustand.MessageHandlers.Handlers
                 Console.WriteLine("[WARNING] RegisterRequest received with null payload");
                 await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
                     new { success = false, error = "Invalid payload" });
+                return;
+            }
+
+            // Validate input lengths to prevent abuse
+            if (payload.username != null && payload.username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
+            {
+                Console.WriteLine($"[REGISTER] Rejected overly long username from {session.SessionId}");
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = false, error = $"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters" });
+                return;
+            }
+
+            if (payload.password != null && payload.password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
+            {
+                Console.WriteLine($"[REGISTER] Rejected overly long password from {session.SessionId}");
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = false, error = $"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters" });
+                return;
+            }
+
+            // Check for invalid characters
+            if (ContainsInvalidCharacters(payload.username))
+            {
+                Console.WriteLine($"[REGISTER] Rejected username with control characters from {session.SessionId}");
+                await SendResponseAsync(session, message, MessageTypes.REGISTER_RESPONSE,
+                    new { success = false, error = "Username contains invalid characters" });
                 return;
             }
 

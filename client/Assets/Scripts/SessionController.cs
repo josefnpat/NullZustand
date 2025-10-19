@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Newtonsoft.Json.Linq;
+using NullZustand;
 
 public class SessionController : MonoBehaviour
 {
@@ -57,6 +58,32 @@ public class SessionController : MonoBehaviour
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
         ClearStatus();
+        
+        // Client-side validation
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            SetStatus("Username cannot be empty");
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            SetStatus("Password cannot be empty");
+            return;
+        }
+        
+        if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
+        {
+            SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
+            return;
+        }
+        
+        if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
+        {
+            SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
+            return;
+        }
+        
         _serverController.Login(username, password, OnLoginSuccess, OnLoginFailure);
     }
 
@@ -91,6 +118,38 @@ public class SessionController : MonoBehaviour
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
         ClearStatus();
+        
+        // Client-side validation
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            SetStatus("Username cannot be empty");
+            return;
+        }
+        
+        if (username.Length < ValidationConstants.MIN_USERNAME_LENGTH)
+        {
+            SetStatus($"Username must be at least {ValidationConstants.MIN_USERNAME_LENGTH} characters");
+            return;
+        }
+        
+        if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
+        {
+            SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            SetStatus("Password cannot be empty");
+            return;
+        }
+        
+        if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
+        {
+            SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
+            return;
+        }
+        
         _serverController.Register(username, password, OnRegisterSuccess, OnRegisterFail);
     }
 
@@ -151,11 +210,25 @@ public class SessionController : MonoBehaviour
         if (!xValid || !yValid || !zValid)
         {
             SetStatus("Invalid coordinates. Please enter valid numbers.");
+            return;
         }
-        else
+        
+        // Validate coordinate ranges
+        if (!IsValidCoordinate(x) || !IsValidCoordinate(y) || !IsValidCoordinate(z))
         {
-            _serverController.UpdatePosition(x, y, z, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+            SetStatus($"Coordinates must be between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}");
+            return;
         }
+        
+        _serverController.UpdatePosition(x, y, z, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+    }
+    
+    private bool IsValidCoordinate(float value)
+    {
+        return !float.IsNaN(value) && 
+               !float.IsInfinity(value) && 
+               value >= ValidationConstants.MIN_COORDINATE && 
+               value <= ValidationConstants.MAX_COORDINATE;
     }
 
     private void OnUpdatePositionSuccess(object payload)

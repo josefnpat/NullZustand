@@ -34,6 +34,20 @@ namespace NullZustand
         public const int BUFFER_SIZE = 4096;
     }
 
+    public static class ValidationConstants
+    {
+        // Username validation
+        public const int MIN_USERNAME_LENGTH = 3;
+        public const int MAX_USERNAME_LENGTH = 50;
+        
+        // Password validation
+        public const int MAX_PASSWORD_LENGTH = 100;
+        
+        // Coordinate validation
+        public const float MIN_COORDINATE = -100000f;
+        public const float MAX_COORDINATE = 100000f;
+    }
+
     public static class MessageFraming
     {
         private static async Task<bool> ReadExactAsync(Stream stream, byte[] buffer, int offset, int count)
