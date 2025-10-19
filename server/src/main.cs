@@ -9,28 +9,81 @@ namespace NullZustand
 {
     public class Program
     {
-        private const int DEFAULT_PORT = 7777;
-        
+        private const int DEFAULT_PORT = 8140;
+
         static void Main(string[] args)
         {
+            int port = DEFAULT_PORT;
+
+            // Parse command line arguments
+            for (int i = 0; i < args.Length; i++)
+            {
+                switch (args[i].ToLower())
+                {
+                    case "-p":
+                    case "--port":
+                        if (i + 1 < args.Length)
+                        {
+                            if (int.TryParse(args[i + 1], out int parsedPort))
+                            {
+                                port = parsedPort;
+                                i++; // Skip the next argument since we consumed it
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[ERROR] Invalid port number: {args[i + 1]}");
+                                Console.WriteLine($"[INFO] Using default port: {DEFAULT_PORT}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[ERROR] {args[i]} flag requires a value");
+                            Console.WriteLine($"[INFO] Using default port: {DEFAULT_PORT}");
+                        }
+                        break;
+
+                    case "-h":
+                    case "-help":
+                        ShowHelp();
+                        return;
+
+                    default:
+                        Console.WriteLine($"[ERROR] Unknown argument: {args[i]}");
+                        Console.WriteLine("Use -h or -help for usage information");
+                        break;
+                }
+            }
+
+            Console.WriteLine($"[INFO] Starting server on port: {port}");
+
             Server server = new Server();
             try
             {
-                server.StartAsync(DEFAULT_PORT).GetAwaiter().GetResult();
+                server.StartAsync(port).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Server error: {ex.Message}");
             }
         }
+
+        private static void ShowHelp()
+        {
+            Console.WriteLine("NullZustand Server");
+            Console.WriteLine("Usage: NullZustand.exe [options]");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine($"  -p, --port <number>    Port number to listen on (default: {DEFAULT_PORT})");
+            Console.WriteLine("  -h, -help        Show this help message");
+        }
     }
-    
+
     public class Message
     {
         public string Type { get; set; }
         public object Payload { get; set; }
     }
-    
+
     public class Server
     {
         private const int BUFFER_SIZE = 4096;
@@ -38,10 +91,10 @@ namespace NullZustand
         private const string PONG_MESSAGE_TYPE = "Pong";
         private const string LOGIN_REQUEST_TYPE = "LoginRequest";
         private const string LOGIN_RESPONSE_TYPE = "LoginResponse";
-        
+
         private TcpListener _listener;
 
-        public async Task StartAsync(int port = 7777)
+        public async Task StartAsync(int port)
         {
             try
             {
@@ -132,7 +185,7 @@ namespace NullZustand
                 Console.WriteLine($"[ERROR] Failed to process message: {ex.Message}");
             }
         }
-        
+
         private async Task HandlePingMessageAsync(NetworkStream stream)
         {
             Message response = new Message
@@ -142,7 +195,7 @@ namespace NullZustand
             };
             await SendAsync(stream, response);
         }
-        
+
         private async Task HandleLoginRequestAsync(NetworkStream stream)
         {
             Message response = new Message

@@ -3,6 +3,7 @@ PROJECT_NAME = NullZustand
 SRC_DIR = src
 BUILD_DIR = build
 EXE = $(BUILD_DIR)/$(PROJECT_NAME).exe
+PORT = 8140
 
 # Compiler
 MCS = mcs
@@ -34,8 +35,8 @@ $(EXE): $(SRC)
 
 # Run the server
 run: all
-	@echo "Starting server with Mono..."
-	mono $(EXE)
+	@echo "Starting server with Mono on port $(PORT)..."
+	mono $(EXE) --port $(PORT)
 
 # Clean build artifacts
 clean:

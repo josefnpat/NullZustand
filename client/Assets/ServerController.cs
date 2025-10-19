@@ -12,7 +12,7 @@ public class ServerController : MonoBehaviour
 
     void Start()
     {
-        _ = ConnectToServerAsync("127.0.0.1", 7777);
+        _ = ConnectToServerAsync("127.0.0.1", 8140);
     }
 
     private async Task ConnectToServerAsync(string host, int port)
