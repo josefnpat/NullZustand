@@ -8,12 +8,15 @@ using NullZustand;
 
 public class ServerController : MonoBehaviour
 {
+    [SerializeField]
+    private string serverHost = "127.0.0.1";
+    
     private TcpClient _client;
     private NetworkStream _stream;
 
     void Start()
     {
-        _ = ConnectToServerAsync("127.0.0.1", ServerConstants.DEFAULT_PORT);
+        _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
     }
 
     private async Task ConnectToServerAsync(string host, int port)
