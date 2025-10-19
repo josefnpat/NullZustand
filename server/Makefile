@@ -9,7 +9,7 @@ PORT = 8140
 MCS = mcs
 
 # Source files
-SRC = $(wildcard $(SRC_DIR)/*.cs)
+SRC = $(wildcard $(SRC_DIR)/*.cs) $(wildcard $(SRC_DIR)/MessageHandlers/*.cs) $(wildcard $(SRC_DIR)/MessageHandlers/Handlers/*.cs)
 UNITY_SRC = ../client/Assets/Shared/Messages.cs
 
 # Default target

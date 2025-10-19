@@ -5,6 +5,8 @@ using System.Text;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using NullZustand;
+using NullZustand.MessageHandlers;
+using NullZustand.MessageHandlers.Handlers;
 
 namespace NullZustand
 {
@@ -83,11 +85,15 @@ namespace NullZustand
         private const int BUFFER_SIZE = ServerConstants.BUFFER_SIZE;
 
         private TcpListener _listener;
+        private MessageHandlerRegistry _handlerRegistry;
 
         public async Task StartAsync(int port)
         {
             try
             {
+                // Initialize and register message handlers
+                InitializeHandlers();
+
                 _listener = new TcpListener(IPAddress.Any, port);
                 _listener.Start();
                 Console.WriteLine($"[SERVER] Started on port {port}");
@@ -103,6 +109,21 @@ namespace NullZustand
                 Console.WriteLine($"[ERROR] Server startup failed: {ex.Message}");
                 throw;
             }
+        }
+
+        private void InitializeHandlers()
+        {
+            _handlerRegistry = new MessageHandlerRegistry();
+
+            // Register message handlers - easily comment out any handler to disable it
+            _handlerRegistry.RegisterHandler(new PingMessageHandler());
+            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler());
+
+            // Example of how easy it is to add/remove handlers:
+            // _handlerRegistry.RegisterHandler(new ExampleMessageHandler());
+
+            // Add new handlers here as needed:
+            // _handlerRegistry.RegisterHandler(new SomeOtherMessageHandler());
         }
 
         private async Task HandleClientAsync(TcpClient client)
@@ -155,19 +176,10 @@ namespace NullZustand
             {
                 Console.WriteLine($"[MESSAGE] Received: {message.Type}");
 
-                switch (message.Type)
+                bool handled = await _handlerRegistry.ProcessMessageAsync(message.Type, stream);
+                if (!handled)
                 {
-                    case MessageTypes.PING:
-                        await HandlePingMessageAsync(stream);
-                        break;
-
-                    case MessageTypes.LOGIN_REQUEST:
-                        await HandleLoginRequestAsync(stream);
-                        break;
-
-                    default:
-                        Console.WriteLine($"[WARNING] Unknown message type: {message.Type}");
-                        break;
+                    Console.WriteLine($"[WARNING] No handler available for message type: {message.Type}");
                 }
             }
             catch (Exception ex)
@@ -176,39 +188,5 @@ namespace NullZustand
             }
         }
 
-        private async Task HandlePingMessageAsync(NetworkStream stream)
-        {
-            Message response = new Message
-            {
-                Type = MessageTypes.PONG,
-                Payload = new { time = DateTime.UtcNow }
-            };
-            await SendAsync(stream, response);
-        }
-
-        private async Task HandleLoginRequestAsync(NetworkStream stream)
-        {
-            Message response = new Message
-            {
-                Type = MessageTypes.LOGIN_RESPONSE,
-                Payload = new { success = true, sessionToken = "abc123" }
-            };
-            await SendAsync(stream, response);
-        }
-
-        private async Task SendAsync(NetworkStream stream, Message message)
-        {
-            try
-            {
-                string json = JsonConvert.SerializeObject(message);
-                byte[] bytes = Encoding.UTF8.GetBytes(json);
-                await stream.WriteAsync(bytes, 0, bytes.Length);
-                Console.WriteLine($"[MESSAGE] Sent: {message.Type}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ERROR] Failed to send message: {ex.Message}");
-            }
-        }
     }
 }
