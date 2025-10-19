@@ -44,13 +44,13 @@ namespace NullZustand
                         break;
 
                     case "-h":
-                    case "-help":
+                    case "--help":
                         ShowHelp();
                         return;
 
                     default:
                         Console.WriteLine($"[ERROR] Unknown argument: {args[i]}");
-                        Console.WriteLine("Use -h or -help for usage information");
+                        Console.WriteLine("Use -h or --help for usage information");
                         break;
                 }
             }
@@ -75,7 +75,7 @@ namespace NullZustand
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine($"  -p, --port <number>    Port number to listen on (default: {ServerConstants.DEFAULT_PORT})");
-            Console.WriteLine("  -h, -help        Show this help message");
+            Console.WriteLine("  -h, --help              Show this help message");
         }
     }
 
