@@ -12,11 +12,6 @@ using NullZustand.MessageHandlers.Handlers;
 
 namespace NullZustand
 {
-    public static class CertificatePaths
-    {
-        public static readonly string SERVER_CERT_PATH = Path.Combine("build", "server.pfx");
-    }
-
     public class NullZustand
     {
         static void Main(string[] args)
@@ -89,6 +84,8 @@ namespace NullZustand
 
     public class Server
     {
+        private const string SERVER_CERT_PATH = "build/server.pfx";
+        
         private TcpListener _listener;
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;
@@ -129,15 +126,15 @@ namespace NullZustand
 
         private void LoadCertificate()
         {
-            if (!File.Exists(CertificatePaths.SERVER_CERT_PATH))
+            if (!File.Exists(SERVER_CERT_PATH))
             {
                 throw new FileNotFoundException(
-                    $"Server certificate not found at {CertificatePaths.SERVER_CERT_PATH}\n" +
+                    $"Server certificate not found at {SERVER_CERT_PATH}\n" +
                     "Run 'make' to generate certificates before starting the server.");
             }
 
-            _serverCertificate = new X509Certificate2(CertificatePaths.SERVER_CERT_PATH, "");
-            Console.WriteLine($"[CERT] Loaded server certificate from {CertificatePaths.SERVER_CERT_PATH}");
+            _serverCertificate = new X509Certificate2(SERVER_CERT_PATH, "");
+            Console.WriteLine($"[CERT] Loaded server certificate from {SERVER_CERT_PATH}");
             Console.WriteLine($"[CERT] Thumbprint: {_serverCertificate.Thumbprint}");
         }
 
