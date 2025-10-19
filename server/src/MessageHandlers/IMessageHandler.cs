@@ -6,6 +6,6 @@ namespace NullZustand.MessageHandlers
     public interface IMessageHandler
     {
         string MessageType { get; }
-        Task HandleAsync(NetworkStream stream);
+        Task HandleAsync(Message message, NetworkStream stream);
     }
 }

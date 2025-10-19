@@ -177,7 +177,7 @@ namespace NullZustand
             {
                 Console.WriteLine($"[MESSAGE] Received: {message.Type}");
 
-                bool handled = await _handlerRegistry.ProcessMessageAsync(message.Type, stream);
+                bool handled = await _handlerRegistry.ProcessMessageAsync(message, stream);
                 if (!handled)
                 {
                     Console.WriteLine($"[WARNING] No handler available for message type: {message.Type}");

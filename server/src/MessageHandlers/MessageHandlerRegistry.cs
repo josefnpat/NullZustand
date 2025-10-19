@@ -18,24 +18,24 @@ namespace NullZustand.MessageHandlers
             Console.WriteLine($"[HANDLER] Registered: {handler.MessageType}");
         }
 
-        public async Task<bool> ProcessMessageAsync(string messageType, NetworkStream stream)
+        public async Task<bool> ProcessMessageAsync(Message message, NetworkStream stream)
         {
-            if (_handlers.TryGetValue(messageType, out IMessageHandler handler))
+            if (_handlers.TryGetValue(message.Type, out IMessageHandler handler))
             {
                 try
                 {
-                    Console.WriteLine($"[MESSAGE] Processing: {messageType}");
-                    await handler.HandleAsync(stream);
+                    Console.WriteLine($"[MESSAGE] Processing: {message.Type}");
+                    await handler.HandleAsync(message, stream);
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[ERROR] Handler failed for {messageType}: {ex.Message}");
+                    Console.WriteLine($"[ERROR] Handler failed for {message.Type}: {ex.Message}");
                     return false;
                 }
             }
 
-            Console.WriteLine($"[WARNING] No handler found for message type: {messageType}");
+            Console.WriteLine($"[WARNING] No handler found for message type: {message.Type}");
             return false;
         }
 

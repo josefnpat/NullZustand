@@ -8,7 +8,7 @@ namespace NullZustand.MessageHandlers.Handlers
     {
         public override string MessageType => MessageTypes.PING;
 
-        public override async Task HandleAsync(NetworkStream stream)
+        public override async Task HandleAsync(Message message, NetworkStream stream)
         {
             Message response = new Message
             {
