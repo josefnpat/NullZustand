@@ -16,8 +16,7 @@ namespace NullZustand.MessageHandlers
             try
             {
                 string json = JsonConvert.SerializeObject(message);
-                byte[] bytes = Encoding.UTF8.GetBytes(json);
-                await stream.WriteAsync(bytes, 0, bytes.Length);
+                await MessageFraming.WriteMessageAsync(stream, json);
                 Console.WriteLine($"[MESSAGE] Sent: {message.Type}");
             }
             catch (System.Exception ex)

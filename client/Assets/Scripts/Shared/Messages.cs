@@ -1,13 +1,10 @@
 using System;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NullZustand
 {
-    /// <summary>
-    /// Shared message types and constants used by both Unity client and server.
-    /// This file is referenced by the server build process via the Makefile.
-    /// Any changes to message types or constants will be automatically reflected in both projects.
-    /// </summary>
-    
     [Serializable]
     public class Message
     {
@@ -27,5 +24,76 @@ namespace NullZustand
     {
         public const int DEFAULT_PORT = 8140;
         public const int BUFFER_SIZE = 4096;
+    }
+
+    public static class MessageFraming
+    {
+        private static async Task<bool> ReadExactAsync(NetworkStream stream, byte[] buffer, int offset, int count)
+        {
+            int totalRead = 0;
+            while (totalRead < count)
+            {
+                int bytesRead = await stream.ReadAsync(buffer, offset + totalRead, count - totalRead);
+                if (bytesRead == 0)
+                {
+                    return false;
+                }
+                totalRead += bytesRead;
+            }
+            return true;
+        }
+
+        public static async Task<string> ReadMessageAsync(NetworkStream stream)
+        {
+            try
+            {
+                byte[] lengthBuffer = new byte[4];
+                bool success = await ReadExactAsync(stream, lengthBuffer, 0, 4);
+                if (!success)
+                {
+                    return null;
+                }
+
+                if (BitConverter.IsLittleEndian)
+                {
+                    Array.Reverse(lengthBuffer);
+                }
+                int messageLength = BitConverter.ToInt32(lengthBuffer, 0);
+
+                if (messageLength <= 0 || messageLength > ServerConstants.BUFFER_SIZE)
+                {
+                    throw new InvalidOperationException($"Invalid message length: {messageLength}");
+                }
+
+                byte[] messageBuffer = new byte[messageLength];
+                success = await ReadExactAsync(stream, messageBuffer, 0, messageLength);
+                if (!success)
+                {
+                    return null;
+                }
+
+                string message = Encoding.UTF8.GetString(messageBuffer);
+                return message;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public static async Task WriteMessageAsync(NetworkStream stream, string message)
+        {
+            byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+            int messageLength = messageBytes.Length;
+
+            byte[] lengthPrefix = BitConverter.GetBytes(messageLength);
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(lengthPrefix);
+            }
+
+            await stream.WriteAsync(lengthPrefix, 0, 4);
+            await stream.WriteAsync(messageBytes, 0, messageBytes.Length);
+        }
     }
 }

@@ -28,17 +28,14 @@ public class ServerController : MonoBehaviour
             _stream = _client.GetStream();
             Debug.Log("Connected to server!");
 
-            // Start listening for incoming messages
             _ = ListenForMessagesAsync();
 
-            // Send a test Ping
             await SendMessageAsync(new Message
             {
                 Type = MessageTypes.PING,
                 Payload = new { }
             });
 
-            // Send a test LoginRequest
             await SendMessageAsync(new Message
             {
                 Type = MessageTypes.LOGIN_REQUEST,
@@ -48,25 +45,31 @@ public class ServerController : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError($"Failed to connect to server: {ex.Message}");
-            // TODO: Implement retry logic
         }
     }
 
     private async Task ListenForMessagesAsync()
     {
-        byte[] buffer = new byte[4096];
-
         try
         {
             while (_client != null && _client.Connected)
             {
-                int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
-                if (bytesRead == 0) break;
+                string json = await MessageFraming.ReadMessageAsync(_stream);
+                if (json == null)
+                {
+                    Debug.LogError("Connection closed or read failed");
+                    break;
+                }
 
-                string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                 Message message = JsonConvert.DeserializeObject<Message>(json);
-
-                HandleMessage(message);
+                if (message != null)
+                {
+                    HandleMessage(message);
+                }
+                else
+                {
+                    Debug.LogWarning("Failed to deserialize message from JSON");
+                }
             }
         }
         catch (Exception ex)
@@ -96,8 +99,7 @@ public class ServerController : MonoBehaviour
             }
 
             string json = JsonConvert.SerializeObject(message);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            await _stream.WriteAsync(bytes, 0, bytes.Length);
+            await MessageFraming.WriteMessageAsync(_stream, json);
         }
         catch (Exception ex)
         {

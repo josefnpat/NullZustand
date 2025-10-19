@@ -130,16 +130,17 @@ namespace NullZustand
         {
             Console.WriteLine("[CLIENT] Connected");
             NetworkStream stream = client.GetStream();
-            byte[] buffer = new byte[BUFFER_SIZE];
 
             try
             {
                 while (client.Connected)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead == 0) break;
+                    string json = await MessageFraming.ReadMessageAsync(stream);
+                    if (json == null)
+                    {
+                        break;
+                    }
 
-                    string json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     Message message = JsonConvert.DeserializeObject<Message>(json);
 
                     if (message != null)
