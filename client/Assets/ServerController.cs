@@ -10,52 +10,70 @@ public class ServerController : MonoBehaviour
     private TcpClient _client;
     private NetworkStream _stream;
 
-    async void Start()
+    void Start()
     {
-        await ConnectToServer("127.0.0.1", 7777);
+        _ = ConnectToServerAsync("127.0.0.1", 7777);
     }
 
-    private async Task ConnectToServer(string host, int port)
+    private async Task ConnectToServerAsync(string host, int port)
     {
-        _client = new TcpClient();
-        await _client.ConnectAsync(host, port);
-        _stream = _client.GetStream();
-        Debug.Log("Connected to server!");
-
-        // Start listening for incoming messages
-        _ = ListenForMessages();
-
-        // Send a test Ping
-        await SendMessageAsync(new Message
+        try
         {
-            Type = "Ping",
-            Payload = new { }
-        });
+            _client = new TcpClient();
+            await _client.ConnectAsync(host, port);
+            _stream = _client.GetStream();
+            Debug.Log("Connected to server!");
 
-        // Send a test LoginRequest
-        await SendMessageAsync(new Message
+            // Start listening for incoming messages
+            _ = ListenForMessagesAsync();
+
+            // Send a test Ping
+            await SendMessageAsync(new Message
+            {
+                Type = "Ping",
+                Payload = new { }
+            });
+
+            // Send a test LoginRequest
+            await SendMessageAsync(new Message
+            {
+                Type = "LoginRequest",
+                Payload = new { username = "PlayerOne", password = "secret" }
+            });
+        }
+        catch (Exception ex)
         {
-            Type = "LoginRequest",
-            Payload = new { username = "PlayerOne", password = "secret" }
-        });
+            Debug.LogError($"Failed to connect to server: {ex.Message}");
+            // TODO: Implement retry logic
+        }
     }
 
-    private async Task ListenForMessages()
+    private async Task ListenForMessagesAsync()
     {
         var buffer = new byte[4096];
 
-        while (_client.Connected)
+        try
         {
-            int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
-            if (bytesRead == 0) break;
+            while (_client != null && _client.Connected)
+            {
+                int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead == 0) break;
 
-            var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            var message = JsonConvert.DeserializeObject<Message>(json);
+                var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                var message = JsonConvert.DeserializeObject<Message>(json);
 
-            HandleMessage(message);
+                HandleMessage(message);
+            }
         }
-
-        Debug.Log("Disconnected from server.");
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error listening for messages: {ex.Message}");
+        }
+        finally
+        {
+            Debug.Log("Disconnected from server.");
+            Cleanup();
+        }
     }
 
     private void HandleMessage(Message message)
@@ -65,9 +83,45 @@ public class ServerController : MonoBehaviour
 
     private async Task SendMessageAsync(Message message)
     {
-        var json = JsonConvert.SerializeObject(message);
-        var bytes = Encoding.UTF8.GetBytes(json);
-        await _stream.WriteAsync(bytes, 0, bytes.Length);
+        try
+        {
+            if (_stream == null || !_client.Connected)
+            {
+                Debug.LogWarning("Cannot send message: not connected to server");
+                return;
+            }
+
+            var json = JsonConvert.SerializeObject(message);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await _stream.WriteAsync(bytes, 0, bytes.Length);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Failed to send message: {ex.Message}");
+        }
+    }
+
+    private void Cleanup()
+    {
+        try
+        {
+            _stream?.Close();
+            _client?.Close();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error during cleanup: {ex.Message}");
+        }
+        finally
+        {
+            _stream = null;
+            _client = null;
+        }
+    }
+
+    void OnDestroy()
+    {
+        Cleanup();
     }
 
     [Serializable]

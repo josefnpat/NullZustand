@@ -13,7 +13,14 @@ namespace NullZustand
         static void Main(string[] args)
         {
             var server = new Server();
-            server.StartAsync(7777).Wait();
+            try
+            {
+                server.StartAsync(7777).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Server error: {ex.Message}");
+            }
         }
     }
     
@@ -23,14 +30,22 @@ namespace NullZustand
 
         public async Task StartAsync(int port = 7777)
         {
-            _listener = new TcpListener(IPAddress.Any, port);
-            _listener.Start();
-            Console.WriteLine($"Server started on port {port}");
-
-            while (true)
+            try
             {
-                var client = await _listener.AcceptTcpClientAsync();
-                _ = HandleClientAsync(client);
+                _listener = new TcpListener(IPAddress.Any, port);
+                _listener.Start();
+                Console.WriteLine($"Server started on port {port}");
+
+                while (true)
+                {
+                    var client = await _listener.AcceptTcpClientAsync();
+                    _ = HandleClientAsync(client);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Server startup error: {ex.Message}");
+                throw;
             }
         }
 
@@ -40,50 +55,80 @@ namespace NullZustand
             var stream = client.GetStream();
             var buffer = new byte[4096];
 
-            while (client.Connected)
+            try
             {
-                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-                if (bytesRead == 0) break;
+                while (client.Connected)
+                {
+                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    if (bytesRead == 0) break;
 
-                var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                var message = JsonConvert.DeserializeObject<Message>(json);
+                    var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    var message = JsonConvert.DeserializeObject<Message>(json);
 
-                await ProcessMessageAsync(message, stream);
+                    await ProcessMessageAsync(message, stream);
+                }
             }
-
-            Console.WriteLine("Client disconnected.");
-            client.Close();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling client: {ex.Message}");
+            }
+            finally
+            {
+                Console.WriteLine("Client disconnected.");
+                try
+                {
+                    client.Close();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error closing client: {ex.Message}");
+                }
+            }
         }
 
         private async Task ProcessMessageAsync(Message message, NetworkStream stream)
         {
-            Console.WriteLine($"Received: {message.Type}");
-
-            switch (message.Type)
+            try
             {
-                case "Ping":
-                    await SendAsync(stream, new Message { Type = "Pong", Payload = new { time = DateTime.UtcNow } });
-                    break;
+                Console.WriteLine($"Received: {message.Type}");
 
-                case "LoginRequest":
-                    await SendAsync(stream, new Message
-                    {
-                        Type = "LoginResponse",
-                        Payload = new { success = true, sessionToken = "abc123" }
-                    });
-                    break;
+                switch (message.Type)
+                {
+                    case "Ping":
+                        await SendAsync(stream, new Message { Type = "Pong", Payload = new { time = DateTime.UtcNow } });
+                        break;
 
-                default:
-                    Console.WriteLine($"Unknown message type: {message.Type}");
-                    break;
+                    case "LoginRequest":
+                        await SendAsync(stream, new Message
+                        {
+                            Type = "LoginResponse",
+                            Payload = new { success = true, sessionToken = "abc123" }
+                        });
+                        break;
+
+                    default:
+                        Console.WriteLine($"Unknown message type: {message.Type}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing message: {ex.Message}");
             }
         }
 
         private async Task SendAsync(NetworkStream stream, Message message)
         {
-            var json = JsonConvert.SerializeObject(message);
-            var bytes = Encoding.UTF8.GetBytes(json);
-            await stream.WriteAsync(bytes, 0, bytes.Length);
+            try
+            {
+                var json = JsonConvert.SerializeObject(message);
+                var bytes = Encoding.UTF8.GetBytes(json);
+                await stream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending message: {ex.Message}");
+            }
         }
 
         public class Message
