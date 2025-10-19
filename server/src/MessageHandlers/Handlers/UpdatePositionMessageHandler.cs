@@ -12,6 +12,13 @@ namespace NullZustand.MessageHandlers.Handlers
 
     public class UpdatePositionMessageHandler : MessageHandler
     {
+        private readonly PlayerManager _playerManager;
+
+        public UpdatePositionMessageHandler(PlayerManager playerManager)
+        {
+            _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
+        }
+
         public override string MessageType => MessageTypes.UPDATE_POSITION_REQUEST;
 
         // Requires authentication - only logged in players can update position
@@ -34,21 +41,15 @@ namespace NullZustand.MessageHandlers.Handlers
             }
 
             // Update the player's position
-            session.Player.UpdatePosition(payload.x, payload.y, payload.z);
+            long updateId = _playerManager.UpdatePlayerPosition(session.Username, payload.x, payload.y, payload.z);
 
-            Console.WriteLine($"[POSITION] {session.Username} moved to {session.Player.Position}");
+            Console.WriteLine($"[POSITION] {session.Username} moved to ({payload.x:F2}, {payload.y:F2}, {payload.z:F2}) [UpdateID: {updateId}]");
 
             // Send acknowledgment back to client
             await SendAsync(session, new Message
             {
                 Type = MessageTypes.UPDATE_POSITION_RESPONSE,
-                Payload = new
-                {
-                    username = session.Username,
-                    x = session.Player.Position.X,
-                    y = session.Player.Position.Y,
-                    z = session.Player.Position.Z
-                }
+                Payload = new { success = true, updateId = updateId }
             });
         }
     }

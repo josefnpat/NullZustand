@@ -24,29 +24,24 @@ namespace NullZustand
     public class Player
     {
         public string Username { get; }
-        public Vector3 Position { get; set; }
         public DateTime CreatedAt { get; }
         public DateTime LastSeen { get; set; }
 
         public Player(string username)
         {
             Username = username ?? throw new ArgumentNullException(nameof(username));
-            Position = new Vector3(0, 0, 0); // Default spawn position
             CreatedAt = DateTime.UtcNow;
             LastSeen = DateTime.UtcNow;
         }
 
-        public void UpdatePosition(float x, float y, float z)
+        public void UpdateLastSeen()
         {
-            Position.X = x;
-            Position.Y = y;
-            Position.Z = z;
             LastSeen = DateTime.UtcNow;
         }
 
         public override string ToString()
         {
-            return $"[Player {Username}] Position: {Position}, Last Seen: {LastSeen:u}";
+            return $"[Player {Username}] Created: {CreatedAt:u}, Last Seen: {LastSeen:u}";
         }
     }
 }

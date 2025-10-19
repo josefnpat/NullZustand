@@ -24,6 +24,8 @@ public class SessionController : MonoBehaviour
     private TMP_InputField _zInputField;
     [SerializeField]
     private Button _updatePositionButton;
+    [SerializeField]
+    private Button _getLocationUpdatesButton;
 
     private ServerController _serverController;
 
@@ -35,6 +37,7 @@ public class SessionController : MonoBehaviour
         _registerButton.onClick.AddListener(OnRegisterButtonPressed);
         _pingButton.onClick.AddListener(OnPingButtonPressed);
         _updatePositionButton.onClick.AddListener(OnUpdatePositionButtonPressed);
+        _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
 
         ClearStatus();
     }
@@ -69,6 +72,12 @@ public class SessionController : MonoBehaviour
             float.Parse(_yInputField.text),
             float.Parse(_zInputField.text)
         );
+    }
+
+    private void OnGetLocationUpdatesButtonPressed()
+    {
+        ClearStatus();
+        _serverController.GetLocationUpdates();
     }
 
     private void ClearStatus()

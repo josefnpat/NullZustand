@@ -13,11 +13,13 @@ namespace NullZustand.MessageHandlers.Handlers
     {
         private readonly SessionManager _sessionManager;
         private readonly UserAccountManager _accountManager;
+        private readonly PlayerManager _playerManager;
 
-        public LoginRequestMessageHandler(SessionManager sessionManager, UserAccountManager accountManager)
+        public LoginRequestMessageHandler(SessionManager sessionManager, UserAccountManager accountManager, PlayerManager playerManager)
         {
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
             _accountManager = accountManager ?? throw new ArgumentNullException(nameof(accountManager));
+            _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
         }
 
         public override string MessageType => MessageTypes.LOGIN_REQUEST;
@@ -49,10 +51,21 @@ namespace NullZustand.MessageHandlers.Handlers
                 string sessionToken = Guid.NewGuid().ToString("N").Substring(0, 16);
                 Console.WriteLine($"[LOGIN] User '{payload.username}' logged in successfully with token: {sessionToken}");
 
+                // Get all player locations and the current update ID
+                var allPlayers = _playerManager.GetAllPlayerLocations();
+                long currentUpdateId = _playerManager.GetCurrentUpdateId();
+
+                // Client can find their own position in allPlayers array
                 await SendAsync(session, new Message
                 {
                     Type = MessageTypes.LOGIN_RESPONSE,
-                    Payload = new { success = true, sessionToken = sessionToken, username = payload.username }
+                    Payload = new
+                    {
+                        success = true,
+                        sessionToken = sessionToken,
+                        allPlayers = allPlayers,
+                        lastLocationUpdateId = currentUpdateId
+                    }
                 });
             }
             else

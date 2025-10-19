@@ -145,8 +145,9 @@ namespace NullZustand
             // Register message handlers - easily comment out any handler to disable it
             _handlerRegistry.RegisterHandler(new PingMessageHandler());
             _handlerRegistry.RegisterHandler(new RegisterRequestMessageHandler(_accountManager));
-            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager));
-            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
+            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager, _playerManager));
+            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager));
+            _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager));
         }
 
         private async Task HandleClientAsync(TcpClient client)

@@ -6,7 +6,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NullZustand;
+using System.Collections.Generic;
 
 public class ServerController : MonoBehaviour
 {
@@ -16,6 +18,10 @@ public class ServerController : MonoBehaviour
     private TcpClient _client;
     private SslStream _stream;
     private X509Certificate2 _pinnedCertificate;
+    private long _lastLocationUpdateId = 0;
+    private Dictionary<string, Vector3> _playerLocations = new Dictionary<string, Vector3>();
+
+    public event Action<string, Vector3> OnLocationUpdate;
 
     void Awake()
     {
@@ -61,6 +67,15 @@ public class ServerController : MonoBehaviour
         {
             Type = MessageTypes.UPDATE_POSITION_REQUEST,
             Payload = new { x = x, y = y, z = z }
+        });
+    }
+
+    public async void GetLocationUpdates()
+    {
+        await SendMessageAsync(new Message
+        {
+            Type = MessageTypes.LOCATION_UPDATES_REQUEST,
+            Payload = new { lastUpdateId = _lastLocationUpdateId }
         });
     }
 
@@ -198,6 +213,65 @@ public class ServerController : MonoBehaviour
     private void HandleMessage(Message message)
     {
         Debug.Log($"Received: {message.Type} | Payload: {JsonConvert.SerializeObject(message.Payload)}");
+
+        try
+        {
+            JObject payload = JObject.FromObject(message.Payload);
+
+            // Handle LOGIN_RESPONSE - initial sync of all players
+            if (message.Type == MessageTypes.LOGIN_RESPONSE)
+            {
+                if (payload["lastLocationUpdateId"] != null)
+                {
+                    _lastLocationUpdateId = payload["lastLocationUpdateId"].Value<long>();
+                }
+
+                if (payload["allPlayers"] != null)
+                {
+                    var allPlayers = payload["allPlayers"] as JArray;
+                    foreach (var player in allPlayers)
+                    {
+                        string username = player["username"].Value<string>();
+                        float x = player["x"].Value<float>();
+                        float y = player["y"].Value<float>();
+                        float z = player["z"].Value<float>();
+
+                        var position = new Vector3(x, y, z);
+                        _playerLocations[username] = position;
+                        OnLocationUpdate?.Invoke(username, position);
+                    }
+                }
+            }
+
+            // Handle LOCATION_UPDATES_RESPONSE - incremental updates
+            if (message.Type == MessageTypes.LOCATION_UPDATES_RESPONSE)
+            {
+                if (payload["lastLocationUpdateId"] != null)
+                {
+                    _lastLocationUpdateId = payload["lastLocationUpdateId"].Value<long>();
+                }
+
+                if (payload["updates"] != null)
+                {
+                    var updates = payload["updates"] as JArray;
+                    foreach (var update in updates)
+                    {
+                        string username = update["username"].Value<string>();
+                        float x = update["x"].Value<float>();
+                        float y = update["y"].Value<float>();
+                        float z = update["z"].Value<float>();
+
+                        var position = new Vector3(x, y, z);
+                        _playerLocations[username] = position;
+                        OnLocationUpdate?.Invoke(username, position);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to process message: {ex.Message}");
+        }
     }
 
     private async Task SendMessageAsync(Message message)
@@ -234,6 +308,8 @@ public class ServerController : MonoBehaviour
         {
             _stream = null;
             _client = null;
+            _lastLocationUpdateId = 0;
+            _playerLocations.Clear();
         }
     }
 

@@ -41,8 +41,7 @@ namespace NullZustand
         {
             string auth = IsAuthenticated ? $"Authenticated as {Username}" : "Guest";
             string address = RemoteAddress ?? "Unknown";
-            string position = Player != null ? $" @ {Player.Position}" : "";
-            return $"[Session {SessionId}] {address} - {auth}{position}";
+            return $"[Session {SessionId}] {address} - {auth}";
         }
     }
 }
