@@ -12,10 +12,12 @@ namespace NullZustand.MessageHandlers.Handlers
     public class LoginRequestMessageHandler : MessageHandler
     {
         private readonly SessionManager _sessionManager;
+        private readonly UserAccountManager _accountManager;
 
-        public LoginRequestMessageHandler(SessionManager sessionManager)
+        public LoginRequestMessageHandler(SessionManager sessionManager, UserAccountManager accountManager)
         {
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+            _accountManager = accountManager ?? throw new ArgumentNullException(nameof(accountManager));
         }
 
         public override string MessageType => MessageTypes.LOGIN_REQUEST;
@@ -38,9 +40,7 @@ namespace NullZustand.MessageHandlers.Handlers
 
             Console.WriteLine($"[LOGIN] Session {session.SessionId} - User '{payload.username}' attempting to login");
 
-            // TODO: Implement actual authentication logic here
-            // For now, accept any non-empty username
-            bool isValid = !string.IsNullOrEmpty(payload.username) && !string.IsNullOrEmpty(payload.password);
+            bool isValid = _accountManager.ValidateCredentials(payload.username, payload.password);
 
             if (isValid)
             {

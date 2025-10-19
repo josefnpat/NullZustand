@@ -92,6 +92,7 @@ namespace NullZustand
         private TcpListener _listener;
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;
+        private UserAccountManager _accountManager;
         private X509Certificate2 _serverCertificate;
 
         public async Task StartAsync(int port)
@@ -101,8 +102,9 @@ namespace NullZustand
                 // Load server certificate
                 LoadCertificate();
 
-                // Initialize session manager and message handlers
+                // Initialize managers and message handlers
                 _sessionManager = new SessionManager();
+                _accountManager = new UserAccountManager();
                 InitializeHandlers();
 
                 _listener = new TcpListener(IPAddress.Any, port);
@@ -143,7 +145,8 @@ namespace NullZustand
 
             // Register message handlers - easily comment out any handler to disable it
             _handlerRegistry.RegisterHandler(new PingMessageHandler());
-            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager));
+            _handlerRegistry.RegisterHandler(new RegisterRequestMessageHandler(_accountManager));
+            _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager));
         }
 
         private async Task HandleClientAsync(TcpClient client)

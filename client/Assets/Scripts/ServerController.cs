@@ -17,10 +17,42 @@ public class ServerController : MonoBehaviour
     private SslStream _stream;
     private X509Certificate2 _pinnedCertificate;
 
+    void Awake()
+    {
+        ServiceLocator.Register<ServerController>(this);
+    }
+
     void Start()
     {
         LoadPinnedCertificate();
         _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
+    }
+
+    public async void Register(string username, string password)
+    {
+        await SendMessageAsync(new Message
+        {
+            Type = MessageTypes.REGISTER_REQUEST,
+            Payload = new { username = username, password = password }
+        });
+    }
+
+    public async void Login(string username, string password)
+    {
+        await SendMessageAsync(new Message
+        {
+            Type = MessageTypes.LOGIN_REQUEST,
+            Payload = new { username = username, password = password }
+        });
+    }
+
+    public async void SendPing()
+    {
+        await SendMessageAsync(new Message
+        {
+            Type = MessageTypes.PING,
+            Payload = new { }
+        });
     }
 
     private void LoadPinnedCertificate()
@@ -73,17 +105,7 @@ public class ServerController : MonoBehaviour
 
             _ = ListenForMessagesAsync();
 
-            await SendMessageAsync(new Message
-            {
-                Type = MessageTypes.PING,
-                Payload = new { }
-            });
-
-            await SendMessageAsync(new Message
-            {
-                Type = MessageTypes.LOGIN_REQUEST,
-                Payload = new { username = "PlayerOne", password = "secret" }
-            });
+            Debug.Log("Connected to server successfully");
         }
         catch (Exception ex)
         {

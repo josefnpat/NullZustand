@@ -16,6 +16,8 @@ namespace NullZustand
     {
         public const string PING = "Ping";
         public const string PONG = "Pong";
+        public const string REGISTER_REQUEST = "RegisterRequest";
+        public const string REGISTER_RESPONSE = "RegisterResponse";
         public const string LOGIN_REQUEST = "LoginRequest";
         public const string LOGIN_RESPONSE = "LoginResponse";
         public const string ERROR = "Error";
