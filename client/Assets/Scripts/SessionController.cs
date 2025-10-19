@@ -72,6 +72,12 @@ public class SessionController : MonoBehaviour
             return;
         }
         
+        if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
+        {
+            SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
+            return;
+        }
+
         if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
         {
             SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
@@ -144,6 +150,12 @@ public class SessionController : MonoBehaviour
             return;
         }
         
+        if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
+        {
+            SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
+            return;
+        }
+
         if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
         {
             SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");

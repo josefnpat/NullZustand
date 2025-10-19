@@ -89,6 +89,18 @@ namespace NullZustand
                 return false;
             }
 
+            if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
+            {
+                error = $"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters long";
+                return false;
+            }
+
+            if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
+            {
+                error = $"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters long";
+                return false;
+            }
+
             // Check if user already exists
             if (_accounts.ContainsKey(username))
             {
