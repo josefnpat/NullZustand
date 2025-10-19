@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Net.Sockets;
-using System.Text;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
@@ -10,23 +12,64 @@ public class ServerController : MonoBehaviour
 {
     [SerializeField]
     private string serverHost = "127.0.0.1";
-    
+
     private TcpClient _client;
-    private NetworkStream _stream;
+    private SslStream _stream;
+    private X509Certificate2 _pinnedCertificate;
 
     void Start()
     {
+        LoadPinnedCertificate();
         _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
+    }
+
+    private void LoadPinnedCertificate()
+    {
+        try
+        {
+            // Path to the pinned certificate in the Unity project
+            string certPath = Path.Combine(Application.dataPath, "Scripts", "Shared", "server.cer");
+
+            if (!File.Exists(certPath))
+            {
+                Debug.LogError($"Pinned certificate not found at: {certPath}");
+                Debug.LogError("Run the server build first to generate the certificate.");
+                return;
+            }
+
+            _pinnedCertificate = new X509Certificate2(certPath);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Failed to load pinned certificate: {ex.Message}");
+        }
     }
 
     private async Task ConnectToServerAsync(string host, int port)
     {
         try
         {
+            if (_pinnedCertificate == null)
+            {
+                Debug.LogError("Cannot connect: Pinned certificate not loaded");
+                return;
+            }
+
+            // Connect to server
             _client = new TcpClient();
             await _client.ConnectAsync(host, port);
-            _stream = _client.GetStream();
-            Debug.Log("Connected to server!");
+
+            // Create SSL stream with certificate validation
+            NetworkStream networkStream = _client.GetStream();
+            _stream = new SslStream(
+                networkStream,
+                false,
+                ValidateServerCertificate,
+                null
+            );
+
+            // Authenticate as client
+            await _stream.AuthenticateAsClientAsync(host);
 
             _ = ListenForMessagesAsync();
 
@@ -46,6 +89,44 @@ public class ServerController : MonoBehaviour
         {
             Debug.LogError($"Failed to connect to server: {ex.Message}");
         }
+    }
+
+    private bool ValidateServerCertificate(
+        object sender,
+        X509Certificate certificate,
+        X509Chain chain,
+        SslPolicyErrors sslPolicyErrors)
+    {
+        // For self-signed certificates, we expect RemoteCertificateChainErrors
+        if (sslPolicyErrors == SslPolicyErrors.None)
+        {
+            return true;
+        }
+
+        // Check if the certificate matches our pinned certificate
+        if (certificate == null || _pinnedCertificate == null)
+        {
+            Debug.LogError("[SSL] Certificate validation failed: Missing certificate");
+            return false;
+        }
+
+        // Convert to X509Certificate2 to access Thumbprint property
+        X509Certificate2 serverCert = new X509Certificate2(certificate);
+
+        // Compare thumbprints (this is the "pinning" part)
+        string serverThumbprint = serverCert.Thumbprint;
+        string pinnedThumbprint = _pinnedCertificate.Thumbprint;
+
+        bool matches = serverThumbprint == pinnedThumbprint;
+
+        if (!matches)
+        {
+            Debug.LogError($"[SSL] Certificate pinning validation FAILED");
+            Debug.LogError($"[SSL] Server thumbprint: {serverThumbprint}");
+            Debug.LogError($"[SSL] Pinned thumbprint: {pinnedThumbprint}");
+        }
+
+        return matches;
     }
 
     private async Task ListenForMessagesAsync()

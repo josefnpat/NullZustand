@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Net.Sockets;
 
 namespace NullZustand
@@ -13,16 +14,16 @@ namespace NullZustand
             _sessions = new ConcurrentDictionary<string, ClientSession>();
         }
 
-        public ClientSession RegisterSession(TcpClient client)
+        public ClientSession RegisterSession(TcpClient client, Stream stream)
         {
-            var session = new ClientSession(client);
+            var session = new ClientSession(client, stream);
             if (_sessions.TryAdd(session.SessionId, session))
             {
                 Console.WriteLine($"[SESSION] Registered: {session}");
                 Console.WriteLine($"[SESSION] Total active sessions: {_sessions.Count}");
                 return session;
             }
-            
+
             throw new InvalidOperationException("Failed to register session");
         }
 

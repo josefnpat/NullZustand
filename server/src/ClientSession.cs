@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Sockets;
 
 namespace NullZustand
@@ -7,20 +8,20 @@ namespace NullZustand
     public class ClientSession
     {
         public string SessionId { get; }
-        public NetworkStream Stream { get; }
+        public Stream Stream { get; }
         public bool IsAuthenticated { get; set; }
         public string Username { get; set; }
         public string RemoteAddress { get; }
 
-        public ClientSession(TcpClient client)
+        public ClientSession(TcpClient client, Stream stream)
         {
             SessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
-            Stream = client?.GetStream() ?? throw new ArgumentNullException(nameof(client));
+            Stream = stream ?? throw new ArgumentNullException(nameof(stream));
             IsAuthenticated = false;
-            
+
             try
             {
-                RemoteAddress = client.Client.RemoteEndPoint?.ToString();
+                RemoteAddress = client?.Client?.RemoteEndPoint?.ToString();
             }
             catch
             {

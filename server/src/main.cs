@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using NullZustand;
@@ -10,6 +12,11 @@ using NullZustand.MessageHandlers.Handlers;
 
 namespace NullZustand
 {
+    public static class CertificatePaths
+    {
+        public static readonly string SERVER_CERT_PATH = Path.Combine("build", "server.pfx");
+    }
+
     public class Program
     {
         static void Main(string[] args)
@@ -85,18 +92,23 @@ namespace NullZustand
         private TcpListener _listener;
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;
+        private X509Certificate2 _serverCertificate;
 
         public async Task StartAsync(int port)
         {
             try
             {
+                // Load server certificate
+                LoadCertificate();
+
                 // Initialize session manager and message handlers
                 _sessionManager = new SessionManager();
                 InitializeHandlers();
 
                 _listener = new TcpListener(IPAddress.Any, port);
                 _listener.Start();
-                Console.WriteLine($"[SERVER] Started on port {port}");
+                Console.WriteLine($"[SERVER] Started on port {port} with SSL/TLS");
+                Console.WriteLine($"[SERVER] Certificate: {_serverCertificate.Subject}");
 
                 while (true)
                 {
@@ -111,6 +123,20 @@ namespace NullZustand
             }
         }
 
+        private void LoadCertificate()
+        {
+            if (!File.Exists(CertificatePaths.SERVER_CERT_PATH))
+            {
+                throw new FileNotFoundException(
+                    $"Server certificate not found at {CertificatePaths.SERVER_CERT_PATH}\n" +
+                    "Run 'make' to generate certificates before starting the server.");
+            }
+
+            _serverCertificate = new X509Certificate2(CertificatePaths.SERVER_CERT_PATH, "");
+            Console.WriteLine($"[CERT] Loaded server certificate from {CertificatePaths.SERVER_CERT_PATH}");
+            Console.WriteLine($"[CERT] Thumbprint: {_serverCertificate.Thumbprint}");
+        }
+
         private void InitializeHandlers()
         {
             _handlerRegistry = new MessageHandlerRegistry();
@@ -122,13 +148,23 @@ namespace NullZustand
 
         private async Task HandleClientAsync(TcpClient client)
         {
-            ClientSession session = _sessionManager.RegisterSession(client);
-
-            Console.WriteLine($"[CLIENT] Connected: {session}");
+            SslStream sslStream = null;
+            ClientSession session = null;
 
             try
             {
-                while (client.Connected)
+                NetworkStream networkStream = client.GetStream();
+                sslStream = new SslStream(networkStream, false);
+
+                // Authenticate as server (using TLS 1.2 - highest version available in .NET 4.5)
+                await sslStream.AuthenticateAsServerAsync(_serverCertificate, false,
+                    System.Security.Authentication.SslProtocols.Tls12,
+                    true);
+
+                session = _sessionManager.RegisterSession(client, sslStream);
+                Console.WriteLine($"[CLIENT] Connected (SSL/TLS): {session}");
+
+                while (client.Connected && sslStream.IsAuthenticated)
                 {
                     string json = await MessageFraming.ReadMessageAsync(session.Stream);
                     if (json == null)
@@ -150,20 +186,24 @@ namespace NullZustand
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Client handling failed for session {session.SessionId}: {ex.Message}");
+                Console.WriteLine($"[ERROR] Client handling failed{(session != null ? $" for session {session.SessionId}" : "")}: {ex.Message}");
             }
             finally
             {
-                Console.WriteLine($"[CLIENT] Disconnected: {session}");
-                _sessionManager.RemoveSession(session.SessionId);
+                if (session != null)
+                {
+                    Console.WriteLine($"[CLIENT] Disconnected: {session}");
+                    _sessionManager.RemoveSession(session.SessionId);
+                }
 
                 try
                 {
+                    sslStream?.Close();
                     client.Close();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[ERROR] Failed to close client: {ex.Message}");
+                    Console.WriteLine($"[ERROR] Failed to close connection: {ex.Message}");
                 }
             }
         }

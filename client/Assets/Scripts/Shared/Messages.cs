@@ -1,5 +1,5 @@
 using System;
-using System.Net.Sockets;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -29,7 +29,7 @@ namespace NullZustand
 
     public static class MessageFraming
     {
-        private static async Task<bool> ReadExactAsync(NetworkStream stream, byte[] buffer, int offset, int count)
+        private static async Task<bool> ReadExactAsync(Stream stream, byte[] buffer, int offset, int count)
         {
             int totalRead = 0;
             while (totalRead < count)
@@ -44,7 +44,7 @@ namespace NullZustand
             return true;
         }
 
-        public static async Task<string> ReadMessageAsync(NetworkStream stream)
+        public static async Task<string> ReadMessageAsync(Stream stream)
         {
             try
             {
@@ -82,7 +82,7 @@ namespace NullZustand
             }
         }
 
-        public static async Task WriteMessageAsync(NetworkStream stream, string message)
+        public static async Task WriteMessageAsync(Stream stream, string message)
         {
             byte[] messageBytes = Encoding.UTF8.GetBytes(message);
             int messageLength = messageBytes.Length;
