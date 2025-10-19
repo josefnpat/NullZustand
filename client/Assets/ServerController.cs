@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
+using NullZustand;
 
 public class ServerController : MonoBehaviour
 {
@@ -12,7 +13,7 @@ public class ServerController : MonoBehaviour
 
     void Start()
     {
-        _ = ConnectToServerAsync("127.0.0.1", 8140);
+        _ = ConnectToServerAsync("127.0.0.1", ServerConstants.DEFAULT_PORT);
     }
 
     private async Task ConnectToServerAsync(string host, int port)
@@ -30,14 +31,14 @@ public class ServerController : MonoBehaviour
             // Send a test Ping
             await SendMessageAsync(new Message
             {
-                Type = "Ping",
+                Type = MessageTypes.PING,
                 Payload = new { }
             });
 
             // Send a test LoginRequest
             await SendMessageAsync(new Message
             {
-                Type = "LoginRequest",
+                Type = MessageTypes.LOGIN_REQUEST,
                 Payload = new { username = "PlayerOne", password = "secret" }
             });
         }
@@ -124,10 +125,4 @@ public class ServerController : MonoBehaviour
         Cleanup();
     }
 
-    [Serializable]
-    public class Message
-    {
-        public string Type { get; set; }
-        public object Payload { get; set; }
-    }
 }

@@ -10,6 +10,7 @@ MCS = mcs
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cs)
+UNITY_SRC = ../client/Assets/Shared/Messages.cs
 
 # Default target
 all: prepare $(EXE)
@@ -19,7 +20,7 @@ prepare:
 	mkdir -p $(BUILD_DIR)
 
 # Compile using Mono C# compiler
-$(EXE): $(SRC)
+$(EXE): $(SRC) $(UNITY_SRC)
 	@echo "Compiling C# sources..."
 	$(MCS) \
 		-sdk:4.5 \
@@ -29,7 +30,7 @@ $(EXE): $(SRC)
 		-r:System.Net.dll \
 		-r:System.Core.dll \
 		-r:packages/Newtonsoft.Json.13.0.4/lib/net45/Newtonsoft.Json.dll \
-		$(SRC)
+		$(SRC) $(UNITY_SRC)
 	cp packages/Newtonsoft.Json.13.0.4/lib/net45/Newtonsoft.Json.dll build/
 	@echo "Build complete → $(EXE)"
 

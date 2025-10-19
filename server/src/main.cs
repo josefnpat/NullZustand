@@ -4,16 +4,15 @@ using System.Net.Sockets;
 using System.Text;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
+using NullZustand;
 
 namespace NullZustand
 {
     public class Program
     {
-        private const int DEFAULT_PORT = 8140;
-
         static void Main(string[] args)
         {
-            int port = DEFAULT_PORT;
+            int port = ServerConstants.DEFAULT_PORT;
 
             // Parse command line arguments
             for (int i = 0; i < args.Length; i++)
@@ -32,13 +31,13 @@ namespace NullZustand
                             else
                             {
                                 Console.WriteLine($"[ERROR] Invalid port number: {args[i + 1]}");
-                                Console.WriteLine($"[INFO] Using default port: {DEFAULT_PORT}");
+                                Console.WriteLine($"[INFO] Using default port: {ServerConstants.DEFAULT_PORT}");
                             }
                         }
                         else
                         {
                             Console.WriteLine($"[ERROR] {args[i]} flag requires a value");
-                            Console.WriteLine($"[INFO] Using default port: {DEFAULT_PORT}");
+                            Console.WriteLine($"[INFO] Using default port: {ServerConstants.DEFAULT_PORT}");
                         }
                         break;
 
@@ -73,24 +72,15 @@ namespace NullZustand
             Console.WriteLine("Usage: NullZustand.exe [options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
-            Console.WriteLine($"  -p, --port <number>    Port number to listen on (default: {DEFAULT_PORT})");
+            Console.WriteLine($"  -p, --port <number>    Port number to listen on (default: {ServerConstants.DEFAULT_PORT})");
             Console.WriteLine("  -h, -help        Show this help message");
         }
     }
 
-    public class Message
-    {
-        public string Type { get; set; }
-        public object Payload { get; set; }
-    }
 
     public class Server
     {
-        private const int BUFFER_SIZE = 4096;
-        private const string PING_MESSAGE_TYPE = "Ping";
-        private const string PONG_MESSAGE_TYPE = "Pong";
-        private const string LOGIN_REQUEST_TYPE = "LoginRequest";
-        private const string LOGIN_RESPONSE_TYPE = "LoginResponse";
+        private const int BUFFER_SIZE = ServerConstants.BUFFER_SIZE;
 
         private TcpListener _listener;
 
@@ -167,11 +157,11 @@ namespace NullZustand
 
                 switch (message.Type)
                 {
-                    case PING_MESSAGE_TYPE:
+                    case MessageTypes.PING:
                         await HandlePingMessageAsync(stream);
                         break;
 
-                    case LOGIN_REQUEST_TYPE:
+                    case MessageTypes.LOGIN_REQUEST:
                         await HandleLoginRequestAsync(stream);
                         break;
 
@@ -190,7 +180,7 @@ namespace NullZustand
         {
             Message response = new Message
             {
-                Type = PONG_MESSAGE_TYPE,
+                Type = MessageTypes.PONG,
                 Payload = new { time = DateTime.UtcNow }
             };
             await SendAsync(stream, response);
@@ -200,7 +190,7 @@ namespace NullZustand
         {
             Message response = new Message
             {
-                Type = LOGIN_RESPONSE_TYPE,
+                Type = MessageTypes.LOGIN_RESPONSE,
                 Payload = new { success = true, sessionToken = "abc123" }
             };
             await SendAsync(stream, response);
