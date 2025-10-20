@@ -7,7 +7,7 @@ PORT = 8140
 
 # Certificate paths
 SERVER_CERT = $(BUILD_DIR)/server.pfx
-CLIENT_CERT = ../client/Assets/Scripts/Shared/server.cer
+CLIENT_CERT = ../client/Assets/StreamingAssets/server.cer
 TEMP_KEY = $(BUILD_DIR)/temp_key.pem
 
 # Compiler
@@ -71,14 +71,13 @@ run: all
 	mono $(EXE) --port $(PORT)
 
 # Clean build artifacts and certificates
-clean:
+clean: clean-certs
 	rm -rf $(BUILD_DIR)
-	rm -f ../client/Assets/Scripts/Shared/server.cer
 
 # Clean only certificates (useful for regenerating)
 clean-certs:
-	rm -f $(BUILD_DIR)/server.pfx
-	rm -f ../client/Assets/Scripts/Shared/server.cer
+	rm -f $(SERVER_CERT)
+	rm -f $(CLIENT_CERT)
 
 .PHONY: all clean clean-certs run deps prepare certs
 

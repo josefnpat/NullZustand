@@ -91,6 +91,7 @@ namespace NullZustand
         private SessionManager _sessionManager;
         private UserAccountManager _accountManager;
         private PlayerManager _playerManager;
+        private ChatManager _chatManager;
         private X509Certificate2 _serverCertificate;
 
         public async Task StartAsync(int port)
@@ -104,6 +105,7 @@ namespace NullZustand
                 _playerManager = new PlayerManager();
                 _sessionManager = new SessionManager(_playerManager);
                 _accountManager = new UserAccountManager();
+                _chatManager = new ChatManager();
                 InitializeHandlers();
 
                 _listener = new TcpListener(IPAddress.Any, port);
@@ -152,6 +154,7 @@ namespace NullZustand
             _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager, _playerManager));
             _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager));
             _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager));
+            _handlerRegistry.RegisterHandler(new ChatMessageHandler(_chatManager, _sessionManager));
         }
 
         private async Task HandleClientAsync(TcpClient client)

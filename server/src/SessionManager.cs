@@ -69,6 +69,13 @@ namespace NullZustand
             }
         }
 
+        public ClientSession[] GetAllAuthenticatedSessions()
+        {
+            return _sessions.Values
+                .Where(s => s.IsAuthenticated)
+                .ToArray();
+        }
+
         public int CleanupIdleSessions(int timeoutSeconds)
         {
             var idleSessions = _sessions

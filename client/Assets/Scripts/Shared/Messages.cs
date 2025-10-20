@@ -25,6 +25,8 @@ namespace NullZustand
         public const string UPDATE_POSITION_RESPONSE = "UpdatePositionResponse";
         public const string LOCATION_UPDATES_REQUEST = "LocationUpdatesRequest";
         public const string LOCATION_UPDATES_RESPONSE = "LocationUpdatesResponse";
+        public const string CHAT_MESSAGE_REQUEST = "ChatMessageRequest";
+        public const string CHAT_MESSAGE_RESPONSE = "ChatMessageResponse";
         public const string ERROR = "Error";
     }
 

@@ -32,6 +32,7 @@ public class ServerController : MonoBehaviour
     public event Action<string, string> OnError; // (errorCode, errorMessage)
     public event Action OnSessionDisconnect;
     public event Action OnPlayerAuthenticate;
+    public event Action<string, string, long> OnNewChatMessage; // (username, message, timestamp)
 
     void Awake()
     {
@@ -69,6 +70,7 @@ public class ServerController : MonoBehaviour
         _handlerRegistry.RegisterHandler(new PingHandler());
         _handlerRegistry.RegisterHandler(new UpdatePositionHandler());
         _handlerRegistry.RegisterHandler(new LocationUpdatesHandler());
+        _handlerRegistry.RegisterHandler(new ChatMessageHandler());
         _handlerRegistry.RegisterHandler(new ErrorHandler());
     }
 
@@ -125,6 +127,13 @@ public class ServerController : MonoBehaviour
             await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
+    public async void SendNewChatMessage(string message, Action<object> onSuccess = null, Action<string> onFailure = null)
+    {
+        var handler = _handlerRegistry.GetHandler<IClientHandler<string>>(MessageTypes.CHAT_MESSAGE_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, message, onSuccess, onFailure);
+    }
+
     public void Disconnect()
     {
         if (_client != null || _stream != null)
@@ -142,8 +151,8 @@ public class ServerController : MonoBehaviour
     {
         try
         {
-            // Path to the pinned certificate in the Unity project
-            string certPath = Path.Combine(Application.dataPath, "Scripts", "Shared", "server.cer");
+            // Path to the pinned certificate - using StreamingAssets for both editor and builds
+            string certPath = Path.Combine(Application.streamingAssetsPath, "server.cer");
 
             if (!File.Exists(certPath))
             {
@@ -389,6 +398,11 @@ public class ServerController : MonoBehaviour
     public void InvokePlayerAuthenticate()
     {
         OnPlayerAuthenticate?.Invoke();
+    }
+
+    public void InvokeNewChatMessage(string username, string message, long timestamp)
+    {
+        OnNewChatMessage?.Invoke(username, message, timestamp);
     }
 
     public async Task SendMessageAsync(Message message)
