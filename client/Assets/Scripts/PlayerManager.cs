@@ -41,6 +41,7 @@ public class PlayerManager : MonoBehaviour
         _serverController = ServiceLocator.Get<ServerController>();
         _statusController = ServiceLocator.Get<StatusController>();
         _serverController.OnLocationUpdate += OnLocationUpdate;
+        _serverController.OnSessionDisconnect += OnSessionDisconnect;
         _updateLocationButton.onClick.AddListener(OnUpdateLocationButtonPressed);
         _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
 
@@ -175,6 +176,11 @@ public class PlayerManager : MonoBehaviour
         _statusController.SetStatus($"Location updates failed: {error}");
     }
 
+    private void OnSessionDisconnect()
+    {
+        ClearAllPlayers();
+    }
+
     public void ClearAllPlayers()
     {
         foreach (var controller in _playerControllers.Values)
@@ -192,6 +198,7 @@ public class PlayerManager : MonoBehaviour
         if (_serverController != null)
         {
             _serverController.OnLocationUpdate -= OnLocationUpdate;
+            _serverController.OnSessionDisconnect -= OnSessionDisconnect;
         }
         ClearAllPlayers();
     }

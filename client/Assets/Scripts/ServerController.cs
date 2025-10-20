@@ -25,7 +25,8 @@ public class ServerController : MonoBehaviour
     private ClientMessageHandlerRegistry _handlerRegistry;
     private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
     private float _lastCallbackCleanupTime = 0f;
-    private const float CALLBACK_CLEANUP_INTERVAL = 5f; // Clean up every 5 seconds
+    private const float CALLBACK_CLEANUP_INTERVAL = 5f;
+    private Task _connectionTask = null;
 
     public event Action<string, Vector3, Quaternion> OnLocationUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -40,7 +41,6 @@ public class ServerController : MonoBehaviour
     void Start()
     {
         LoadPinnedCertificate();
-        _ = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
     }
 
     void Update()
@@ -73,6 +73,12 @@ public class ServerController : MonoBehaviour
 
     public async void Register(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
+        if (!await EnsureConnectedAsync())
+        {
+            onFailure?.Invoke("Failed to connect to server");
+            return;
+        }
+
         var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.REGISTER_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
@@ -80,6 +86,12 @@ public class ServerController : MonoBehaviour
 
     public async void Login(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
+        if (!await EnsureConnectedAsync())
+        {
+            onFailure?.Invoke("Failed to connect to server");
+            return;
+        }
+
         var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
@@ -87,6 +99,12 @@ public class ServerController : MonoBehaviour
 
     public async void SendPing(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
+        if (!await EnsureConnectedAsync())
+        {
+            onFailure?.Invoke("Failed to connect to server");
+            return;
+        }
+
         var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.PING);
         if (handler != null)
             await handler.SendRequestAsync(this, onSuccess, onFailure);
@@ -104,6 +122,19 @@ public class ServerController : MonoBehaviour
         var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.LOCATION_UPDATES_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, onSuccess, onFailure);
+    }
+
+    public void Disconnect()
+    {
+        if (_client != null || _stream != null)
+        {
+            Debug.Log("Disconnecting from server...");
+            Cleanup();
+        }
+        else
+        {
+            Debug.Log("Not connected to server.");
+        }
     }
 
     private void LoadPinnedCertificate()
@@ -128,6 +159,51 @@ public class ServerController : MonoBehaviour
         }
     }
 
+    private async Task<bool> EnsureConnectedAsync()
+    {
+        // Already connected
+        if (_client != null && _client.Connected && _stream != null)
+        {
+            return true;
+        }
+
+        // Clean up any stale connection state
+        if (_client != null && !_client.Connected)
+        {
+            CleanupFailedConnection();
+        }
+
+        // Connection already in progress - wait for it
+        if (_connectionTask != null && !_connectionTask.IsCompleted)
+        {
+            try
+            {
+                await _connectionTask;
+                return _client != null && _client.Connected && _stream != null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Connection attempt failed: {ex.Message}");
+                _connectionTask = null;
+                return false;
+            }
+        }
+
+        // Start new connection
+        _connectionTask = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
+        try
+        {
+            await _connectionTask;
+            return _client != null && _client.Connected && _stream != null;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Connection attempt failed: {ex.Message}");
+            _connectionTask = null;
+            return false;
+        }
+    }
+
     private async Task ConnectToServerAsync(string host, int port)
     {
         try
@@ -135,7 +211,7 @@ public class ServerController : MonoBehaviour
             if (_pinnedCertificate == null)
             {
                 Debug.LogError("Cannot connect: Pinned certificate not loaded");
-                return;
+                throw new InvalidOperationException("Pinned certificate not loaded");
             }
 
             // Connect to server
@@ -161,6 +237,29 @@ public class ServerController : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError($"Failed to connect to server: {ex.Message}");
+            CleanupFailedConnection();
+
+            // Re-throw so EnsureConnectedAsync knows the connection failed
+            throw;
+        }
+    }
+
+    private void CleanupFailedConnection()
+    {
+        try
+        {
+            _stream?.Close();
+            _client?.Close();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Error during failed connection cleanup: {ex.Message}");
+        }
+        finally
+        {
+            _stream = null;
+            _client = null;
+            _connectionTask = null;
         }
     }
 
@@ -292,7 +391,7 @@ public class ServerController : MonoBehaviour
         {
             if (_stream == null || !_client.Connected)
             {
-                Debug.LogWarning("Cannot send message: not connected to server");
+                InvokeError("NOT_CONNECTED", "Cannot send message: not connected to server");
                 return;
             }
 
@@ -322,6 +421,7 @@ public class ServerController : MonoBehaviour
         {
             _stream = null;
             _client = null;
+            _connectionTask = null;
             _lastLocationUpdateId = 0;
             _playerPositions.Clear();
             _playerRotations.Clear();

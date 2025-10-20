@@ -15,6 +15,8 @@ public class SessionController : MonoBehaviour
     private Button _loginButton;
     [SerializeField]
     private Button _registerButton;
+    [SerializeField]
+    private Button _disconnectButton;
 
     [SerializeField]
     private Button _pingButton;
@@ -30,6 +32,7 @@ public class SessionController : MonoBehaviour
         _loginButton.onClick.AddListener(OnLoginButtonPressed);
         _registerButton.onClick.AddListener(OnRegisterButtonPressed);
         _pingButton.onClick.AddListener(OnPingButtonPressed);
+        _disconnectButton.onClick.AddListener(OnDisconnectButtonPressed);
 
         // Subscribe to error events
         _serverController.OnError += OnServerError;
@@ -202,6 +205,12 @@ public class SessionController : MonoBehaviour
     private void OnPingFailure(string error)
     {
         _statusController.SetStatus($"Ping failed: {error}");
+    }
+
+    public void OnDisconnectButtonPressed()
+    {
+        _serverController.Disconnect();
+        _statusController.SetStatus("Disconnected from server.");
     }
 
     void OnDestroy()
