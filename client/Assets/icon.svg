@@ -1,0 +1,69 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Deep space background gradient -->
+  <defs>
+    <radialGradient id="spaceGrad" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#1a0b2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0412;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="planetGrad" cx="35%" cy="35%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3730a3;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#spaceGrad)" rx="80"/>
+  
+  <!-- Stars scattered -->
+  <circle cx="100" cy="80" r="2" fill="#ffffff" opacity="0.8"/>
+  <circle cx="450" cy="120" r="2.5" fill="#ffffff" opacity="0.9"/>
+  <circle cx="380" cy="60" r="1.5" fill="#ffffff" opacity="0.7"/>
+  <circle cx="150" cy="150" r="2" fill="#ffffff" opacity="0.8"/>
+  <circle cx="420" cy="200" r="1.5" fill="#ffffff" opacity="0.6"/>
+  <circle cx="90" cy="250" r="2" fill="#ffffff" opacity="0.9"/>
+  <circle cx="460" cy="300" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="120" cy="420" r="2.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="440" cy="450" r="1.5" fill="#ffffff" opacity="0.9"/>
+  <circle cx="340" cy="480" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="80" cy="380" r="1.5" fill="#ffffff" opacity="0.8"/>
+  <circle cx="480" cy="380" r="2" fill="#ffffff" opacity="0.6"/>
+  
+  <!-- Distant planets/moons -->
+  <circle cx="100" cy="100" r="15" fill="#3b2667" opacity="0.4"/>
+  <circle cx="420" cy="90" r="12" fill="#5c3d8a" opacity="0.3"/>
+  
+  <!-- Main planet -->
+  <circle cx="256" cy="256" r="120" fill="url(#planetGrad)"/>
+  
+  <!-- Planet details/craters -->
+  <circle cx="220" cy="230" r="18" fill="#2d1f5e" opacity="0.5"/>
+  <circle cx="290" cy="250" r="24" fill="#2d1f5e" opacity="0.4"/>
+  <circle cx="240" cy="300" r="14" fill="#2d1f5e" opacity="0.5"/>
+  
+  <!-- Highlight on planet -->
+  <ellipse cx="220" cy="210" rx="45" ry="35" fill="#8b87ff" opacity="0.2"/>
+  
+  <!-- Ring around planet -->
+  <ellipse cx="256" cy="256" rx="180" ry="40" fill="none" 
+           stroke="#a78bfa" stroke-width="8" opacity="0.4"/>
+  <ellipse cx="256" cy="256" rx="180" ry="40" fill="none" 
+           stroke="#c4b5fd" stroke-width="3" opacity="0.6"/>
+  
+  <!-- Letters NZ in space style -->
+  <g transform="translate(256, 256)">
+    <!-- N -->
+    <path d="M -70 -45 L -70 45 M -70 -45 L -20 45 M -20 -45 L -20 45" 
+          stroke="#ffffff" stroke-width="12" stroke-linecap="round" 
+          stroke-linejoin="round" fill="none" opacity="0.9"/>
+    <!-- Z -->
+    <path d="M 20 -45 L 70 -45 L 20 45 L 70 45" 
+          stroke="#ffffff" stroke-width="12" stroke-linecap="round" 
+          stroke-linejoin="round" fill="none" opacity="0.9"/>
+  </g>
+  
+  <!-- Star glints -->
+  <path d="M 410 140 L 412 140 M 411 139 L 411 141" stroke="#ffffff" stroke-width="1" opacity="0.8"/>
+  <path d="M 130 160 L 132 160 M 131 159 L 131 161" stroke="#ffffff" stroke-width="1" opacity="0.7"/>
+  <path d="M 450 320 L 452 320 M 451 319 L 451 321" stroke="#ffffff" stroke-width="1" opacity="0.9"/>
+</svg>
+
