@@ -20,13 +20,14 @@ public class ServerController : MonoBehaviour
     private SslStream _stream;
     private X509Certificate2 _pinnedCertificate;
     private long _lastLocationUpdateId = 0;
-    private Dictionary<string, Vector3> _playerLocations = new Dictionary<string, Vector3>();
+    private Dictionary<string, Vector3> _playerPositions = new Dictionary<string, Vector3>();
+    private Dictionary<string, Quaternion> _playerRotations = new Dictionary<string, Quaternion>();
     private ClientMessageHandlerRegistry _handlerRegistry;
     private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
     private float _lastCallbackCleanupTime = 0f;
     private const float CALLBACK_CLEANUP_INTERVAL = 5f; // Clean up every 5 seconds
 
-    public event Action<string, Vector3> OnLocationUpdate;
+    public event Action<string, Vector3, Quaternion> OnLocationUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
     public event Action OnSessionDisconnect;
 
@@ -91,11 +92,11 @@ public class ServerController : MonoBehaviour
             await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
-    public async void UpdatePosition(float x, float y, float z, Action<object> onSuccess = null, Action<string> onFailure = null)
+    public async void UpdatePosition(float x, float y, float z, float rotX, float rotY, float rotZ, float rotW, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientHandler<float, float, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientHandler<float, float, float, float, float, float, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, x, y, z, onSuccess, onFailure);
+            await handler.SendRequestAsync(this, x, y, z, rotX, rotY, rotZ, rotW, onSuccess, onFailure);
     }
 
     public async void GetLocationUpdates(Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -258,10 +259,11 @@ public class ServerController : MonoBehaviour
         return _lastLocationUpdateId;
     }
 
-    public void UpdatePlayerLocation(string username, Vector3 position)
+    public void UpdatePlayerLocation(string username, Vector3 position, Quaternion rotation)
     {
-        _playerLocations[username] = position;
-        OnLocationUpdate?.Invoke(username, position);
+        _playerPositions[username] = position;
+        _playerRotations[username] = rotation;
+        OnLocationUpdate?.Invoke(username, position, rotation);
     }
 
     public void RegisterResponseCallbacks(string messageId, Action<object> onSuccess, Action<string> onFailure)
@@ -321,7 +323,8 @@ public class ServerController : MonoBehaviour
             _stream = null;
             _client = null;
             _lastLocationUpdateId = 0;
-            _playerLocations.Clear();
+            _playerPositions.Clear();
+            _playerRotations.Clear();
             _responseCallbacks.CleanupExpiredCallbacks(0f);
 
             // Notify subscribers that session has disconnected

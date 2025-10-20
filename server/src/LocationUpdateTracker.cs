@@ -4,6 +4,27 @@ using System.Linq;
 
 namespace NullZustand
 {
+    public class Quaternion
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+        public float W { get; set; }
+
+        public Quaternion(float x = 0f, float y = 0f, float z = 0f, float w = 1f)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+            W = w;
+        }
+
+        public override string ToString()
+        {
+            return $"({X:F2}, {Y:F2}, {Z:F2}, {W:F2})";
+        }
+    }
+
     public class LocationUpdate
     {
         public long UpdateId { get; set; }
@@ -11,15 +32,23 @@ namespace NullZustand
         public float X { get; set; }
         public float Y { get; set; }
         public float Z { get; set; }
+        public float RotX { get; set; }
+        public float RotY { get; set; }
+        public float RotZ { get; set; }
+        public float RotW { get; set; }
         public DateTime Timestamp { get; set; }
 
-        public LocationUpdate(long updateId, string username, float x, float y, float z)
+        public LocationUpdate(long updateId, string username, float x, float y, float z, float rotX, float rotY, float rotZ, float rotW)
         {
             UpdateId = updateId;
             Username = username;
             X = x;
             Y = y;
             Z = z;
+            RotX = rotX;
+            RotY = rotY;
+            RotZ = rotZ;
+            RotW = rotW;
             Timestamp = DateTime.UtcNow;
         }
     }
@@ -31,14 +60,15 @@ namespace NullZustand
         private readonly object _lock = new object();
         private readonly List<LocationUpdate> _updates = new List<LocationUpdate>();
         private readonly Dictionary<string, Vector3> _currentPositions = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Quaternion> _currentRotations = new Dictionary<string, Quaternion>(StringComparer.OrdinalIgnoreCase);
         private const int MAX_STORED_UPDATES = 1000;
 
-        public long RecordUpdate(string username, float x, float y, float z)
+        public long RecordUpdate(string username, float x, float y, float z, float rotX, float rotY, float rotZ, float rotW)
         {
             lock (_lock)
             {
                 long updateId = _nextUpdateId++;
-                var update = new LocationUpdate(updateId, username, x, y, z);
+                var update = new LocationUpdate(updateId, username, x, y, z, rotX, rotY, rotZ, rotW);
                 _updates.Add(update);
 
                 // Update current position
@@ -49,6 +79,16 @@ namespace NullZustand
                 _currentPositions[username].X = x;
                 _currentPositions[username].Y = y;
                 _currentPositions[username].Z = z;
+
+                // Update current rotation
+                if (!_currentRotations.ContainsKey(username))
+                {
+                    _currentRotations[username] = new Quaternion();
+                }
+                _currentRotations[username].X = rotX;
+                _currentRotations[username].Y = rotY;
+                _currentRotations[username].Z = rotZ;
+                _currentRotations[username].W = rotW;
 
                 if (_updates.Count > MAX_STORED_UPDATES)
                 {
@@ -102,11 +142,28 @@ namespace NullZustand
             }
         }
 
+        public Quaternion GetCurrentRotation(string username)
+        {
+            lock (_lock)
+            {
+                _currentRotations.TryGetValue(username, out Quaternion rotation);
+                return rotation;
+            }
+        }
+
         public Dictionary<string, Vector3> GetAllCurrentPositions()
         {
             lock (_lock)
             {
                 return new Dictionary<string, Vector3>(_currentPositions, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        public Dictionary<string, Quaternion> GetAllCurrentRotations()
+        {
+            lock (_lock)
+            {
+                return new Dictionary<string, Quaternion>(_currentRotations, StringComparer.OrdinalIgnoreCase);
             }
         }
 

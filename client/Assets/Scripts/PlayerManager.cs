@@ -14,13 +14,21 @@ public class PlayerManager : MonoBehaviour
     [SerializeField]
     private TMP_Text _statusText;
     [SerializeField]
-    private TMP_InputField _xInputField;
+    private TMP_InputField _xPositionInputField;
     [SerializeField]
-    private TMP_InputField _yInputField;
+    private TMP_InputField _yPositionInputField;
     [SerializeField]
-    private TMP_InputField _zInputField;
+    private TMP_InputField _zPositionInputField;
     [SerializeField]
-    private Button _updatePositionButton;
+    private TMP_InputField _xRotationInputField;
+    [SerializeField]
+    private TMP_InputField _yRotationInputField;
+    [SerializeField]
+    private TMP_InputField _zRotationInputField;
+    [SerializeField]
+    private TMP_InputField _wRotationInputField;
+    [SerializeField]
+    private Button _updateLocationButton;
     [SerializeField]
     private Button _getLocationUpdatesButton;
 
@@ -33,13 +41,13 @@ public class PlayerManager : MonoBehaviour
         _serverController = ServiceLocator.Get<ServerController>();
         _statusController = ServiceLocator.Get<StatusController>();
         _serverController.OnLocationUpdate += OnLocationUpdate;
-        _updatePositionButton.onClick.AddListener(OnUpdatePositionButtonPressed);
+        _updateLocationButton.onClick.AddListener(OnUpdateLocationButtonPressed);
         _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
 
         _statusController.ClearStatus();
     }
 
-    private void OnLocationUpdate(string username, Vector3 position)
+    private void OnLocationUpdate(string username, Vector3 position, Quaternion rotation)
     {
         PlayerController playerController;
         if (_playerControllers.ContainsKey(username))
@@ -52,31 +60,47 @@ public class PlayerManager : MonoBehaviour
             playerController = go.GetComponent<PlayerController>();
             _playerControllers.Add(username, playerController);
         }
-        playerController.SetPosition(position);
+        playerController.SetLocation(position, rotation);
     }
 
-    public void OnUpdatePositionButtonPressed()
+    public void OnUpdateLocationButtonPressed()
     {
         _statusController.ClearStatus();
 
         // Validate and parse all input fields
-        bool xValid = float.TryParse(_xInputField.text, out float x);
-        bool yValid = float.TryParse(_yInputField.text, out float y);
-        bool zValid = float.TryParse(_zInputField.text, out float z);
+        bool xValidPosition = float.TryParse(_xPositionInputField.text, out float xPos);
+        bool yValidPosition = float.TryParse(_yPositionInputField.text, out float yPos);
+        bool zValidPosition = float.TryParse(_zPositionInputField.text, out float zPos);
+        bool xValidRotation = float.TryParse(_xRotationInputField.text, out float xRot);
+        bool yValidRotation = float.TryParse(_yRotationInputField.text, out float yRot);
+        bool zValidRotation = float.TryParse(_zRotationInputField.text, out float zRot);
+        bool wValidRotation = float.TryParse(_wRotationInputField.text, out float wRot);
 
-        if (!xValid || !yValid || !zValid)
+        if (!xValidPosition || !yValidPosition || !zValidPosition)
         {
             _statusController.SetStatus("Invalid coordinates. Please enter valid numbers.");
             return;
         }
 
-        if (!IsValidCoordinate(x) || !IsValidCoordinate(y) || !IsValidCoordinate(z))
+        if (!IsValidCoordinate(xPos) || !IsValidCoordinate(yPos) || !IsValidCoordinate(zPos))
         {
             _statusController.SetStatus($"Coordinates must be between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}");
             return;
         }
 
-        _serverController.UpdatePosition(x, y, z, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+        if (!xValidRotation || !yValidRotation || !zValidRotation || !wValidRotation)
+        {
+            _statusController.SetStatus("Invalid rotation. Please enter valid numbers for quaternion components.");
+            return;
+        }
+
+        if (!IsValidRotation(xRot) || !IsValidRotation(yRot) || !IsValidRotation(zRot) || !IsValidRotation(wRot))
+        {
+            _statusController.SetStatus("Invalid rotation. Quaternion components must be valid numbers.");
+            return;
+        }
+
+        _serverController.UpdatePosition(xPos, yPos, zPos, xRot, yRot, zRot, wRot, OnUpdatePositionSuccess, OnUpdatePositionFailure);
     }
 
     private void OnUpdatePositionSuccess(object payload)
@@ -105,6 +129,11 @@ public class PlayerManager : MonoBehaviour
             !float.IsInfinity(value) &&
             value >= ValidationConstants.MIN_COORDINATE &&
             value <= ValidationConstants.MAX_COORDINATE;
+    }
+
+    private bool IsValidRotation(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value);
     }
     
     private void OnGetLocationUpdatesButtonPressed()

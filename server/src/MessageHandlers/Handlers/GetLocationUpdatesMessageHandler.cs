@@ -49,6 +49,10 @@ namespace NullZustand.MessageHandlers.Handlers
                     x = u.X,
                     y = u.Y,
                     z = u.Z,
+                    rotX = u.RotX,
+                    rotY = u.RotY,
+                    rotZ = u.RotZ,
+                    rotW = u.RotW,
                     timestamp = u.Timestamp.ToString("o") // ISO 8601 format
                 }).ToList();
 

@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    internal void SetPosition(Vector3 position)
+    public void SetLocation(Vector3 position, Quaternion rotation)
     {
-        transform.position = position;
+        transform.SetPositionAndRotation(position, rotation);
     }
 }

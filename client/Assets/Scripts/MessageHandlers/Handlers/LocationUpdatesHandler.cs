@@ -52,12 +52,17 @@ namespace ClientMessageHandlers.Handlers
                 foreach (var update in updates)
                 {
                     string username = update["username"].Value<string>();
-                    float x = update["x"].Value<float>();
-                    float y = update["y"].Value<float>();
-                    float z = update["z"].Value<float>();
+                    float x = update["x"]?.Value<float>() ?? 0f;
+                    float y = update["y"]?.Value<float>() ?? 0f;
+                    float z = update["z"]?.Value<float>() ?? 0f;
+                    float rotX = update["rotX"]?.Value<float>() ?? 0f;
+                    float rotY = update["rotY"]?.Value<float>() ?? 0f;
+                    float rotZ = update["rotZ"]?.Value<float>() ?? 0f;
+                    float rotW = update["rotW"]?.Value<float>() ?? 1f;
 
                     var position = new Vector3(x, y, z);
-                    serverController.UpdatePlayerLocation(username, position);
+                    var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
+                    serverController.UpdatePlayerLocation(username, position, rotation);
                 }
             }
 

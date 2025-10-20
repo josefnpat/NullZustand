@@ -8,6 +8,10 @@ namespace NullZustand.MessageHandlers.Handlers
         public float x { get; set; }
         public float y { get; set; }
         public float z { get; set; }
+        public float rotX { get; set; }
+        public float rotY { get; set; }
+        public float rotZ { get; set; }
+        public float rotW { get; set; }
     }
 
     public class UpdatePositionMessageHandler : MessageHandler
@@ -75,10 +79,32 @@ namespace NullZustand.MessageHandlers.Handlers
                 return;
             }
 
-            // Update the player's position
-            long updateId = _playerManager.UpdatePlayerPosition(session.Username, payload.x, payload.y, payload.z);
+            // Validate rotation quaternion (check for NaN/Infinity)
+            if (float.IsNaN(payload.rotX) || float.IsInfinity(payload.rotX) ||
+                float.IsNaN(payload.rotY) || float.IsInfinity(payload.rotY) ||
+                float.IsNaN(payload.rotZ) || float.IsInfinity(payload.rotZ) ||
+                float.IsNaN(payload.rotW) || float.IsInfinity(payload.rotW))
+            {
+                Console.WriteLine($"[WARNING] Invalid rotation from {session.Username}: ({payload.rotX}, {payload.rotY}, {payload.rotZ}, {payload.rotW})");
 
-            Console.WriteLine($"[POSITION] {session.Username} moved to ({payload.x:F2}, {payload.y:F2}, {payload.z:F2}) [UpdateID: {updateId}]");
+                await SendAsync(session, new Message
+                {
+                    Id = message.Id,
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "INVALID_ROTATION",
+                        message = "Invalid rotation. Quaternion components must be valid numbers."
+                    }
+                });
+                return;
+            }
+
+            // Update the player's position and rotation
+            long updateId = _playerManager.UpdatePlayerPosition(session.Username, payload.x, payload.y, payload.z, 
+                payload.rotX, payload.rotY, payload.rotZ, payload.rotW);
+
+            Console.WriteLine($"[POSITION] {session.Username} moved to ({payload.x:F2}, {payload.y:F2}, {payload.z:F2}), rotation: ({payload.rotX:F2}, {payload.rotY:F2}, {payload.rotZ:F2}, {payload.rotW:F2}) [UpdateID: {updateId}]");
 
             // Send acknowledgment back to client
             await SendResponseAsync(session, message, MessageTypes.UPDATE_POSITION_RESPONSE,

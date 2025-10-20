@@ -26,15 +26,16 @@ namespace NullZustand
             });
         }
 
-        public long UpdatePlayerPosition(string username, float x, float y, float z)
+        public long UpdatePlayerPosition(string username, float x, float y, float z, float rotX, float rotY, float rotZ, float rotW)
         {
             _players.TryGetValue(username, out Player player);
             if (player != null)
             {
                 player.UpdateLastSeen();
-                long updateId = _locationUpdateTracker.RecordUpdate(username, x, y, z);
+                long updateId = _locationUpdateTracker.RecordUpdate(username, x, y, z, rotX, rotY, rotZ, rotW);
                 Vector3 position = _locationUpdateTracker.GetCurrentPosition(username);
-                Console.WriteLine($"[PLAYER] Updated position for {username}: {position} [UpdateID: {updateId}]");
+                Quaternion rotation = _locationUpdateTracker.GetCurrentRotation(username);
+                Console.WriteLine($"[PLAYER] Updated position for {username}: {position}, rotation: {rotation} [UpdateID: {updateId}]");
                 return updateId;
             }
 
@@ -44,6 +45,7 @@ namespace NullZustand
         public List<object> GetAllPlayerLocations()
         {
             var positions = _locationUpdateTracker.GetAllCurrentPositions();
+            var rotations = _locationUpdateTracker.GetAllCurrentRotations();
             return _players.Keys.Select(username =>
             {
                 positions.TryGetValue(username, out Vector3 pos);
@@ -51,12 +53,21 @@ namespace NullZustand
                 {
                     pos = new Vector3(0, 0, 0); // Default position if not yet set
                 }
+                rotations.TryGetValue(username, out Quaternion rot);
+                if (rot == null)
+                {
+                    rot = new Quaternion(0, 0, 0, 1); // Default rotation (identity)
+                }
                 return new
                 {
                     username = username,
                     x = pos.X,
                     y = pos.Y,
-                    z = pos.Z
+                    z = pos.Z,
+                    rotX = rot.X,
+                    rotY = rot.Y,
+                    rotZ = rot.Z,
+                    rotW = rot.W
                 };
             }).Cast<object>().ToList();
         }
