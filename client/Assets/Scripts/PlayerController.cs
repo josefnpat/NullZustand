@@ -5,7 +5,7 @@ public class PlayerController : MonoBehaviour
 {
     private TransformTweener _transformTweener;
 
-    private void Start()
+    private void Awake()
     {
         _transformTweener = GetComponent<TransformTweener>();
     }
