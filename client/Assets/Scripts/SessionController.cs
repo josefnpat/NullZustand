@@ -15,84 +15,73 @@ public class SessionController : MonoBehaviour
     private Button _loginButton;
     [SerializeField]
     private Button _registerButton;
-    [SerializeField]
-    private TMP_Text _statusText;
+
     [SerializeField]
     private Button _pingButton;
-    [SerializeField]
-    private TMP_InputField _xInputField;
-    [SerializeField]
-    private TMP_InputField _yInputField;
-    [SerializeField]
-    private TMP_InputField _zInputField;
-    [SerializeField]
-    private Button _updatePositionButton;
-    [SerializeField]
-    private Button _getLocationUpdatesButton;
 
     private ServerController _serverController;
+    private StatusController _statusController;
 
     public void Start()
     {
         _serverController = ServiceLocator.Get<ServerController>();
+        _statusController = ServiceLocator.Get<StatusController>();
 
         _loginButton.onClick.AddListener(OnLoginButtonPressed);
         _registerButton.onClick.AddListener(OnRegisterButtonPressed);
         _pingButton.onClick.AddListener(OnPingButtonPressed);
-        _updatePositionButton.onClick.AddListener(OnUpdatePositionButtonPressed);
-        _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
 
         // Subscribe to error events
         _serverController.OnError += OnServerError;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
 
-        ClearStatus();
+        _statusController.ClearStatus();
     }
 
     private void OnServerError(string code, string message)
     {
-        SetStatus($"Server Error ({code}): {message}");
+        _statusController.SetStatus($"Server Error ({code}): {message}");
     }
 
     private void OnSessionDisconnect()
     {
-        SetStatus("Disconnected from server.");
+        _statusController.SetStatus("Disconnected from server.");
     }
 
     public void OnLoginButtonPressed()
     {
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
-        ClearStatus();
+        _statusController.ClearStatus();
         
         // Client-side validation
         if (string.IsNullOrWhiteSpace(username))
         {
-            SetStatus("Username cannot be empty");
+            _statusController.SetStatus("Username cannot be empty");
             return;
         }
         
         if (string.IsNullOrWhiteSpace(password))
         {
-            SetStatus("Password cannot be empty");
+            _statusController.SetStatus("Password cannot be empty");
             return;
         }
         
         if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
         {
-            SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
+            _statusController.SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
             return;
         }
 
         if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
         {
-            SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
+            _statusController.SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
             return;
         }
         
         if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
         {
-            SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
+            _statusController.SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
             return;
         }
         
@@ -112,7 +101,7 @@ public class SessionController : MonoBehaviour
                 playerCount = allPlayers.Count;
             }
 
-            SetStatus($"Login successful! {playerCount} player(s) online.");
+            _statusController.SetStatus($"Login successful! {playerCount} player(s) online.");
         }
         catch (Exception ex)
         {
@@ -122,49 +111,49 @@ public class SessionController : MonoBehaviour
 
     private void OnLoginFailure(string error)
     {
-        SetStatus($"Login failed: {error}");
+        _statusController.SetStatus($"Login failed: {error}");
     }
 
     public void OnRegisterButtonPressed()
     {
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
-        ClearStatus();
+        _statusController.ClearStatus();
         
         // Client-side validation
         if (string.IsNullOrWhiteSpace(username))
         {
-            SetStatus("Username cannot be empty");
+            _statusController.SetStatus("Username cannot be empty");
             return;
         }
         
         if (username.Length < ValidationConstants.MIN_USERNAME_LENGTH)
         {
-            SetStatus($"Username must be at least {ValidationConstants.MIN_USERNAME_LENGTH} characters");
+            _statusController.SetStatus($"Username must be at least {ValidationConstants.MIN_USERNAME_LENGTH} characters");
             return;
         }
         
         if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
         {
-            SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
+            _statusController.SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
             return;
         }
         
         if (string.IsNullOrWhiteSpace(password))
         {
-            SetStatus("Password cannot be empty");
+            _statusController.SetStatus("Password cannot be empty");
             return;
         }
         
         if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
         {
-            SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
+            _statusController.SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
             return;
         }
 
         if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
         {
-            SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
+            _statusController.SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
             return;
         }
         
@@ -177,7 +166,7 @@ public class SessionController : MonoBehaviour
         {
             JObject data = JObject.FromObject(payload);
             string username = data["username"]?.Value<string>();
-            SetStatus($"Registration successful! You can now log in as '{username}'.");
+            _statusController.SetStatus($"Registration successful! You can now log in as '{username}'.");
         }
         catch (Exception ex)
         {
@@ -187,12 +176,12 @@ public class SessionController : MonoBehaviour
 
     private void OnRegisterFail(string error)
     {
-        SetStatus($"Registration failed: {error}");
+        _statusController.SetStatus($"Registration failed: {error}");
     }
 
     public void OnPingButtonPressed()
     {
-        ClearStatus();
+        _statusController.ClearStatus();
         _serverController.SendPing(OnPingSuccess, OnPingFailure);
     }
 
@@ -202,7 +191,7 @@ public class SessionController : MonoBehaviour
         {
             JObject data = JObject.FromObject(payload);
             string serverTime = data["time"]?.Value<string>();
-            SetStatus($"Pong! Server time: {serverTime}");
+            _statusController.SetStatus($"Pong! Server time: {serverTime}");
         }
         catch (Exception ex)
         {
@@ -212,110 +201,7 @@ public class SessionController : MonoBehaviour
 
     private void OnPingFailure(string error)
     {
-        SetStatus($"Ping failed: {error}");
-    }
-
-    public void OnUpdatePositionButtonPressed()
-    {
-        ClearStatus();
-
-        // Validate and parse all input fields
-        bool xValid = float.TryParse(_xInputField.text, out float x);
-        bool yValid = float.TryParse(_yInputField.text, out float y);
-        bool zValid = float.TryParse(_zInputField.text, out float z);
-
-        // Check for validation errors
-        if (!xValid || !yValid || !zValid)
-        {
-            SetStatus("Invalid coordinates. Please enter valid numbers.");
-            return;
-        }
-        
-        // Validate coordinate ranges
-        if (!IsValidCoordinate(x) || !IsValidCoordinate(y) || !IsValidCoordinate(z))
-        {
-            SetStatus($"Coordinates must be between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}");
-            return;
-        }
-        
-        _serverController.UpdatePosition(x, y, z, OnUpdatePositionSuccess, OnUpdatePositionFailure);
-    }
-    
-    private bool IsValidCoordinate(float value)
-    {
-        return !float.IsNaN(value) && 
-               !float.IsInfinity(value) && 
-               value >= ValidationConstants.MIN_COORDINATE && 
-               value <= ValidationConstants.MAX_COORDINATE;
-    }
-
-    private void OnUpdatePositionSuccess(object payload)
-    {
-        try
-        {
-            JObject data = JObject.FromObject(payload);
-            long updateId = data["updateId"]?.Value<long>() ?? 0;
-
-            SetStatus($"Position updated successfully! Update ID: {updateId}");
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"Failed to parse update position success payload: {ex.Message}");
-        }
-    }
-
-    private void OnUpdatePositionFailure(string error)
-    {
-        SetStatus($"Position update failed: {error}");
-    }
-
-    private void OnGetLocationUpdatesButtonPressed()
-    {
-        ClearStatus();
-        _serverController.GetLocationUpdates(OnGetLocationUpdatesSuccess, OnGetLocationUpdatesFailure);
-    }
-
-    private void OnGetLocationUpdatesSuccess(object payload)
-    {
-        try
-        {
-            JObject data = JObject.FromObject(payload);
-            long lastUpdateId = data["lastLocationUpdateId"]?.Value<long>() ?? 0;
-
-            int updateCount = 0;
-            if (data["updates"] is JArray updates)
-            {
-                updateCount = updates.Count;
-            }
-
-            if (updateCount > 0)
-            {
-                SetStatus($"Received {updateCount} location update(s). Update ID: {lastUpdateId}");
-            }
-            else
-            {
-                SetStatus("No new location updates.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"Failed to parse location updates success payload: {ex.Message}");
-        }
-    }
-
-    private void OnGetLocationUpdatesFailure(string error)
-    {
-        SetStatus($"Location updates failed: {error}");
-    }
-
-    private void ClearStatus()
-    {
-        SetStatus(string.Empty);
-    }
-
-    private void SetStatus(string status)
-    {
-        _statusText.text = status;
+        _statusController.SetStatus($"Ping failed: {error}");
     }
 
     void OnDestroy()
