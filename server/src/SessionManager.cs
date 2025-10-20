@@ -8,11 +8,13 @@ namespace NullZustand
     public class SessionManager
     {
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
+        private readonly ConcurrentDictionary<string, string> _usernameToSessionId;
         private readonly PlayerManager _playerManager;
 
         public SessionManager(PlayerManager playerManager)
         {
             _sessions = new ConcurrentDictionary<string, ClientSession>();
+            _usernameToSessionId = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
         }
 
@@ -29,6 +31,18 @@ namespace NullZustand
             throw new InvalidOperationException("Failed to register session");
         }
 
+        public ClientSession GetExistingSessionForUsername(string username)
+        {
+            if (_usernameToSessionId.TryGetValue(username, out string existingSessionId))
+            {
+                if (_sessions.TryGetValue(existingSessionId, out ClientSession existingSession))
+                {
+                    return existingSession;
+                }
+            }
+            return null;
+        }
+
         public void AuthenticateSession(string sessionId, string username)
         {
             if (_sessions.TryGetValue(sessionId, out ClientSession session))
@@ -36,6 +50,7 @@ namespace NullZustand
                 // Get or create the persistent player object
                 Player player = _playerManager.GetOrCreatePlayer(username);
                 session.Authenticate(username, player);
+                _usernameToSessionId[username] = sessionId;
                 Console.WriteLine($"[SESSION] Authenticated: {session}");
             }
         }
@@ -44,10 +59,15 @@ namespace NullZustand
         {
             if (_sessions.TryRemove(sessionId, out ClientSession session))
             {
+                if (session.IsAuthenticated && !string.IsNullOrEmpty(session.Username))
+                {
+                    _usernameToSessionId.TryRemove(session.Username, out _);
+                }
                 Console.WriteLine($"[SESSION] Removed: {session}");
                 Console.WriteLine($"[SESSION] Total active sessions: {_sessions.Count}");
             }
         }
+
     }
 }
 

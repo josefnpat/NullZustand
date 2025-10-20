@@ -60,10 +60,45 @@ namespace NullZustand.MessageHandlers.Handlers
 
             if (isValid)
             {
-                _sessionManager.AuthenticateSession(session.SessionId, payload.username);
+                // Check if user is already logged in from another session
+                ClientSession existingSession = _sessionManager.GetExistingSessionForUsername(payload.username);
+                if (existingSession != null && existingSession.SessionId != session.SessionId)
+                {
+                    Console.WriteLine($"[LOGIN] User '{payload.username}' already logged in from session {existingSession.SessionId}. Kicking old session.");
 
-                string sessionToken = Guid.NewGuid().ToString("N").Substring(0, 16);
-                Console.WriteLine($"[LOGIN] User '{payload.username}' logged in successfully with token: {sessionToken}");
+                    // Notify the old session that it's being disconnected
+                    try
+                    {
+                        await SendAsync(existingSession, new Message
+                        {
+                            Type = MessageTypes.ERROR,
+                            Payload = new
+                            {
+                                code = "LOGGED_IN_ELSEWHERE",
+                                message = "You have been logged in from another location."
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[LOGIN] Failed to notify old session: {ex.Message}");
+                    }
+
+                    // The old session will be cleaned up when the client disconnects
+                    // or we can force close the stream here
+                    try
+                    {
+                        existingSession.Stream?.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[LOGIN] Failed to close old session stream: {ex.Message}");
+                    }
+                }
+
+                // Authenticate the new session
+                _sessionManager.AuthenticateSession(session.SessionId, payload.username);
+                Console.WriteLine($"[LOGIN] User '{payload.username}' logged in successfully");
 
                 // Get all player locations and the current update ID
                 var allPlayers = _playerManager.GetAllPlayerLocations();
@@ -73,7 +108,6 @@ namespace NullZustand.MessageHandlers.Handlers
                 await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE, new
                 {
                     success = true,
-                    sessionToken = sessionToken,
                     allPlayers = allPlayers,
                     lastLocationUpdateId = currentUpdateId
                 });

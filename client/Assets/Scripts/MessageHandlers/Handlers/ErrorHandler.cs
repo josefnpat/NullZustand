@@ -65,6 +65,16 @@ namespace ClientMessageHandlers.Handlers
                 return;
             }
 
+            // Special handling for LOGGED_IN_ELSEWHERE error
+            if (code == "LOGGED_IN_ELSEWHERE")
+            {
+                Debug.LogWarning($"[ErrorHandler] Logged in from another location - disconnecting");
+                // The connection will be closed by the server
+                // Just notify the user through the error event
+                serverController.InvokeError(code, errorMessage);
+                return;
+            }
+
             // Standard error handling for other error codes
             // Invoke the OnError event for global error handling
             serverController.InvokeError(code, errorMessage);
