@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 
 namespace NullZustand
@@ -68,6 +69,36 @@ namespace NullZustand
             }
         }
 
+        public int CleanupIdleSessions(int timeoutSeconds)
+        {
+            var idleSessions = _sessions
+                .Where(kvp => kvp.Value.GetIdleTime().TotalSeconds > timeoutSeconds)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            int cleanedCount = 0;
+            foreach (var sessionId in idleSessions)
+            {
+                if (_sessions.TryGetValue(sessionId, out ClientSession session))
+                {
+                    Console.WriteLine($"[SESSION] Cleaning up idle session {sessionId} (idle for {session.GetIdleTime().TotalSeconds:F0}s)");
+
+                    try
+                    {
+                        session.Stream?.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[SESSION] Error closing idle session stream: {ex.Message}");
+                    }
+
+                    RemoveSession(sessionId);
+                    cleanedCount++;
+                }
+            }
+
+            return cleanedCount;
+        }
     }
 }
 

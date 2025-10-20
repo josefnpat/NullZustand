@@ -32,6 +32,11 @@ namespace NullZustand
     {
         public const int DEFAULT_PORT = 8140;
         public const int BUFFER_SIZE = 4096;
+
+        public const int SOCKET_READ_TIMEOUT_MS = 60000; // 60 seconds
+        public const int SOCKET_WRITE_TIMEOUT_MS = 30000; // 30 seconds
+        public const int IDLE_SESSION_TIMEOUT_SECONDS = 300; // 5 minutes
+        public const int IDLE_CLEANUP_INTERVAL_SECONDS = 60; // 1 minute
     }
 
     public static class ValidationConstants

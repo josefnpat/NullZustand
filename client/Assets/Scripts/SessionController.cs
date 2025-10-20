@@ -44,6 +44,7 @@ public class SessionController : MonoBehaviour
 
         // Subscribe to error events
         _serverController.OnError += OnServerError;
+        _serverController.OnSessionDisconnect += OnSessionDisconnect;
 
         ClearStatus();
     }
@@ -51,6 +52,11 @@ public class SessionController : MonoBehaviour
     private void OnServerError(string code, string message)
     {
         SetStatus($"Server Error ({code}): {message}");
+    }
+
+    private void OnSessionDisconnect()
+    {
+        SetStatus("Disconnected from server.");
     }
 
     public void OnLoginButtonPressed()
@@ -317,6 +323,7 @@ public class SessionController : MonoBehaviour
         if (_serverController != null)
         {
             _serverController.OnError -= OnServerError;
+            _serverController.OnSessionDisconnect -= OnSessionDisconnect;
         }
     }
 

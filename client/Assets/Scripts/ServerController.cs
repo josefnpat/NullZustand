@@ -28,6 +28,7 @@ public class ServerController : MonoBehaviour
 
     public event Action<string, Vector3> OnLocationUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
+    public event Action OnSessionDisconnect;
 
     void Awake()
     {
@@ -209,7 +210,7 @@ public class ServerController : MonoBehaviour
                 string json = await MessageFraming.ReadMessageAsync(_stream);
                 if (json == null)
                 {
-                    Debug.LogError("Connection closed or read failed");
+                    Debug.LogWarning("Connection closed or read failed");
                     break;
                 }
 
@@ -304,6 +305,8 @@ public class ServerController : MonoBehaviour
 
     private void Cleanup()
     {
+        bool wasConnected = _client != null && _stream != null;
+
         try
         {
             _stream?.Close();
@@ -320,6 +323,12 @@ public class ServerController : MonoBehaviour
             _lastLocationUpdateId = 0;
             _playerLocations.Clear();
             _responseCallbacks.CleanupExpiredCallbacks(0f);
+
+            // Notify subscribers that session has disconnected
+            if (wasConnected)
+            {
+                OnSessionDisconnect?.Invoke();
+            }
         }
     }
 

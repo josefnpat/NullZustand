@@ -110,6 +110,10 @@ namespace NullZustand
                 _listener.Start();
                 Console.WriteLine($"[SERVER] Started on port {port} with SSL/TLS");
                 Console.WriteLine($"[SERVER] Certificate: {_serverCertificate.Subject}");
+                Console.WriteLine($"[SERVER] Idle session timeout: {ServerConstants.IDLE_SESSION_TIMEOUT_SECONDS}s");
+
+                // Start background task for idle session cleanup
+                _ = Task.Run(() => IdleSessionCleanupLoopAsync());
 
                 while (true)
                 {
@@ -157,7 +161,14 @@ namespace NullZustand
 
             try
             {
+                // Set TCP socket timeouts to detect dead connections
+                client.ReceiveTimeout = ServerConstants.SOCKET_READ_TIMEOUT_MS;
+                client.SendTimeout = ServerConstants.SOCKET_WRITE_TIMEOUT_MS;
+
                 NetworkStream networkStream = client.GetStream();
+                networkStream.ReadTimeout = ServerConstants.SOCKET_READ_TIMEOUT_MS;
+                networkStream.WriteTimeout = ServerConstants.SOCKET_WRITE_TIMEOUT_MS;
+
                 sslStream = new SslStream(networkStream, false);
 
                 // Authenticate as server (using TLS 1.2 - highest version available in .NET 4.5)
@@ -175,7 +186,7 @@ namespace NullZustand
                     {
                         break;
                     }
-
+                    session.UpdateActivity();
                     Message message = JsonConvert.DeserializeObject<Message>(json);
 
                     if (message != null)
@@ -228,6 +239,29 @@ namespace NullZustand
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] Failed to process message: {ex.Message}");
+            }
+        }
+
+        private async Task IdleSessionCleanupLoopAsync()
+        {
+            Console.WriteLine($"[SERVER] Started idle session cleanup task (interval: {ServerConstants.IDLE_CLEANUP_INTERVAL_SECONDS}s)");
+
+            while (true)
+            {
+                try
+                {
+                    await Task.Delay(ServerConstants.IDLE_CLEANUP_INTERVAL_SECONDS * 1000);
+
+                    int cleaned = _sessionManager.CleanupIdleSessions(ServerConstants.IDLE_SESSION_TIMEOUT_SECONDS);
+                    if (cleaned > 0)
+                    {
+                        Console.WriteLine($"[SERVER] Cleaned up {cleaned} idle session(s)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] Idle session cleanup failed: {ex.Message}");
+                }
             }
         }
 
