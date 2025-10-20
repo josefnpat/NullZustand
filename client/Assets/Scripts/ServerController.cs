@@ -31,6 +31,7 @@ public class ServerController : MonoBehaviour
     public event Action<string, Vector3, Quaternion> OnLocationUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
     public event Action OnSessionDisconnect;
+    public event Action OnPlayerAuthenticate;
 
     void Awake()
     {
@@ -383,6 +384,11 @@ public class ServerController : MonoBehaviour
     public void InvokeError(string code, string message)
     {
         OnError?.Invoke(code, message);
+    }
+
+    public void InvokePlayerAuthenticate()
+    {
+        OnPlayerAuthenticate?.Invoke();
     }
 
     public async Task SendMessageAsync(Message message)

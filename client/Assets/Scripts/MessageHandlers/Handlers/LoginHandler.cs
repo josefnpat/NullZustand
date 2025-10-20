@@ -68,6 +68,8 @@ namespace ClientMessageHandlers.Handlers
                     }
                 }
 
+                serverController.InvokePlayerAuthenticate();
+
                 serverController.InvokeResponseSuccess(message.Id, payload);
             }
             else
