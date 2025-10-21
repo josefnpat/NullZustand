@@ -11,7 +11,7 @@ CLIENT_CERT = ../client/Assets/StreamingAssets/server.cer
 TEMP_KEY = $(BUILD_DIR)/temp_key.pem
 
 # Compiler
-MCS = mcs
+MCS = csc
 
 # Source files
 SRC = $(wildcard $(SRC_DIR)/*.cs) \
@@ -39,11 +39,12 @@ $(SERVER_CERT) $(CLIENT_CERT):
 			-keyout "$(TEMP_KEY)" \
 			-out "$(CLIENT_CERT)" \
 			-days 3650 \
-			-subj "/CN=NullZustand Server" 2>/dev/null; \
+			-subj "/CN=NullZustand Server" \
+			-quiet; \
 		openssl pkcs12 -export -out "$(SERVER_CERT)" \
 			-inkey "$(TEMP_KEY)" \
 			-in "$(CLIENT_CERT)" \
-			-legacy -passout pass: 2>/dev/null; \
+			-legacy -passout pass:; \
 		rm -f "$(TEMP_KEY)"; \
 		echo "[CERT] Certificate generation complete"; \
 		echo "[CERT] Private key: $(SERVER_CERT)"; \
@@ -54,7 +55,7 @@ $(SERVER_CERT) $(CLIENT_CERT):
 $(EXE): $(SRC) $(UNITY_SRC)
 	@echo "Compiling C# sources..."
 	$(MCS) \
-		-sdk:4.5 \
+		-nologo \
 		-langversion:latest \
 		-out:$@ \
 		-target:exe \
