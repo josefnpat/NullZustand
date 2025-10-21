@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json;
@@ -36,6 +37,7 @@ public class ServerController : MonoBehaviour
     private const float TIME_SYNC_INTERVAL = 60f;
     private Task<ConnectionResult> _connectionTask = null;
     private string _lastConnectionError = null;
+    private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
 
     public event Action<string, PlayerState> OnLocationUpdate; // username, playerState
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -526,7 +528,17 @@ public class ServerController : MonoBehaviour
             }
 
             string json = JsonConvert.SerializeObject(message);
-            await MessageFraming.WriteMessageAsync(_stream, json);
+
+            // Use semaphore to ensure only one write operation at a time
+            await _writeLock.WaitAsync();
+            try
+            {
+                await MessageFraming.WriteMessageAsync(_stream, json);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
         }
         catch (Exception ex)
         {
@@ -571,6 +583,14 @@ public class ServerController : MonoBehaviour
     {
         OnPlayerAuthenticate -= OnPlayerAuthenticated;
         Cleanup();
+        try
+        {
+            _writeLock?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error disposing write lock: {ex.Message}");
+        }
     }
 
 }
