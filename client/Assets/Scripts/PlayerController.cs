@@ -21,13 +21,13 @@ public class PlayerController : MonoBehaviour
             // Calculate predicted position based on velocity and time elapsed
             long currentTimeMs = NullZustand.TimeUtils.GetUnixTimestampMs();
             float elapsedSeconds = (currentTimeMs - _lastServerState.TimestampMs) / 1000.0f;
-            
+
             // Calculate movement direction from rotation (forward vector)
             Vector3 forward = _lastServerState.Rotation * Vector3.forward;
-            
+
             // Calculate predicted position
             Vector3 predictedPosition = _lastServerState.Position + forward * _lastServerState.Velocity * elapsedSeconds;
-            
+
             // Smoothly move to predicted position
             _transformTweener.TweenToLocation(predictedPosition, _lastServerState.Rotation);
         }

@@ -104,20 +104,20 @@ public class SessionController : MonoBehaviour
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
         _statusController.ClearStatus();
-        
+
         // Client-side validation
         if (string.IsNullOrWhiteSpace(username))
         {
             _statusController.SetStatus("Username cannot be empty");
             return;
         }
-        
+
         if (string.IsNullOrWhiteSpace(password))
         {
             _statusController.SetStatus("Password cannot be empty");
             return;
         }
-        
+
         if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
         {
             _statusController.SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
@@ -129,13 +129,13 @@ public class SessionController : MonoBehaviour
             _statusController.SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
             return;
         }
-        
+
         if (password.Length > ValidationConstants.MAX_PASSWORD_LENGTH)
         {
             _statusController.SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
             return;
         }
-        
+
         _serverController.Login(username, password, OnLoginSuccess, OnLoginFailure);
     }
 
@@ -170,32 +170,32 @@ public class SessionController : MonoBehaviour
         string username = _usernameInputField.text;
         string password = _passwordInputField.text;
         _statusController.ClearStatus();
-        
+
         // Client-side validation
         if (string.IsNullOrWhiteSpace(username))
         {
             _statusController.SetStatus("Username cannot be empty");
             return;
         }
-        
+
         if (username.Length < ValidationConstants.MIN_USERNAME_LENGTH)
         {
             _statusController.SetStatus($"Username must be at least {ValidationConstants.MIN_USERNAME_LENGTH} characters");
             return;
         }
-        
+
         if (username.Length > ValidationConstants.MAX_USERNAME_LENGTH)
         {
             _statusController.SetStatus($"Username must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters");
             return;
         }
-        
+
         if (string.IsNullOrWhiteSpace(password))
         {
             _statusController.SetStatus("Password cannot be empty");
             return;
         }
-        
+
         if (password.Length < ValidationConstants.MIN_PASSWORD_LENGTH)
         {
             _statusController.SetStatus($"Password must be at least {ValidationConstants.MIN_PASSWORD_LENGTH} characters");
@@ -207,7 +207,7 @@ public class SessionController : MonoBehaviour
             _statusController.SetStatus($"Password must be at most {ValidationConstants.MAX_PASSWORD_LENGTH} characters");
             return;
         }
-        
+
         _serverController.Register(username, password, OnRegisterSuccess, OnRegisterFail);
     }
 

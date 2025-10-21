@@ -80,12 +80,12 @@ namespace NullZustand
         {
             // q * v * q^-1 (quaternion-vector multiplication)
             // Optimized formula: v + 2 * cross(q.xyz, cross(q.xyz, v) + q.w * v)
-            
+
             Vec3 qVec = new Vec3(X, Y, Z);
             Vec3 cross1 = Cross(qVec, v);
             Vec3 wv = v * W;
             Vec3 cross2 = Cross(qVec, cross1 + wv);
-            
+
             return v + (cross2 * 2f);
         }
 

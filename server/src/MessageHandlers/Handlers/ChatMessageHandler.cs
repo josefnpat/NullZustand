@@ -78,7 +78,7 @@ namespace NullZustand.MessageHandlers.Handlers
         {
             var sessions = _sessionManager.GetAllAuthenticatedSessions();
             long timestamp = TimeUtils.GetUnixTimestampMs();
-            
+
             foreach (var session in sessions)
             {
                 try

@@ -85,7 +85,7 @@ namespace NullZustand
     public class Server
     {
         private const string SERVER_CERT_PATH = "build/server.pfx";
-        
+
         private TcpListener _listener;
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;

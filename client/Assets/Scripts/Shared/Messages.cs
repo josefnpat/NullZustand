@@ -50,11 +50,11 @@ namespace NullZustand
         // Username validation
         public const int MIN_USERNAME_LENGTH = 3;
         public const int MAX_USERNAME_LENGTH = 50;
-        
+
         // Password validation
         public const int MIN_PASSWORD_LENGTH = 4;
         public const int MAX_PASSWORD_LENGTH = 100;
-        
+
         // Coordinate validation
         public const float MIN_COORDINATE = -100000f;
         public const float MAX_COORDINATE = 100000f;

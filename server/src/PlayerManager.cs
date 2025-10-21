@@ -69,7 +69,7 @@ namespace NullZustand
                 // Record to history tracker
                 long updateId = _locationUpdateTracker.RecordUpdate(username, newPosition, rotation, velocity, serverTimestamp);
                 Console.WriteLine($"[PLAYER] Updated {username}: pos={newPosition}, rot={rotation}, vel={velocity:F2} [UpdateID: {updateId}]");
-                
+
                 // Raise event for location update (observers can handle broadcasting)
                 OnLocationUpdated(new LocationUpdateEvent
                 {

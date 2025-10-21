@@ -19,11 +19,11 @@ namespace ClientMessageHandlers.Handlers
             {
                 Id = messageId,
                 Type = MessageTypes.UPDATE_POSITION_REQUEST,
-                Payload = new { 
-                    rotX = rotation.x, 
-                    rotY = rotation.y, 
-                    rotZ = rotation.z, 
-                    rotW = rotation.w, 
+                Payload = new {
+                    rotX = rotation.x,
+                    rotY = rotation.y,
+                    rotZ = rotation.z,
+                    rotW = rotation.w,
                     velocity = velocity
                 }
             });

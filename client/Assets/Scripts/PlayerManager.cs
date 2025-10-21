@@ -136,7 +136,7 @@ public class PlayerManager : MonoBehaviour
     {
         return !float.IsNaN(value) && !float.IsInfinity(value);
     }
-    
+
     private void OnGetLocationUpdatesButtonPressed()
     {
         _statusController.ClearStatus();
