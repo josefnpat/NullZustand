@@ -37,8 +37,15 @@ namespace NullZustand.MessageHandlers
 
         protected async Task SendAsync(ClientSession session, Message message)
         {
+            // SYNCHRONIZATION PATTERN:
+            // Step 1: Wait for exclusive access to this session's stream
+            // - If another task is currently writing, this will wait until they finish
+            // - If no one is writing, we get immediate access
+            await session.StreamSemaphore.WaitAsync();
+
             try
             {
+                // Step 2: We now have exclusive access - safe to write to stream
                 string json = JsonConvert.SerializeObject(message);
                 await MessageFraming.WriteMessageAsync(session.Stream, json);
                 Console.WriteLine($"[MESSAGE] Sent to {session.SessionId}: {message.Type}");
@@ -46,6 +53,13 @@ namespace NullZustand.MessageHandlers
             catch (System.Exception ex)
             {
                 Console.WriteLine($"[ERROR] Failed to send message to {session.SessionId}: {ex.Message}");
+            }
+            finally
+            {
+                // Step 3: ALWAYS release the semaphore so other tasks can write
+                // - This runs even if an exception occurred
+                // - Allows the next waiting task to proceed
+                session.StreamSemaphore.Release();
             }
         }
 

@@ -6,6 +6,7 @@ public class PlayerController : MonoBehaviour
     private TransformTweener _transformTweener;
     private PlayerState _lastServerState;
     private bool _hasReceivedUpdate = false;
+    private bool _isFirstUpdate = true;
 
     private void Awake()
     {
@@ -15,7 +16,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (_hasReceivedUpdate && _lastServerState.Velocity > 0.001f)
+        if (_hasReceivedUpdate && _lastServerState.Velocity != 0f)
         {
             // Calculate predicted position based on velocity and time elapsed
             long currentTimeMs = NullZustand.TimeUtils.GetUnixTimestampMs();
@@ -40,10 +41,24 @@ public class PlayerController : MonoBehaviour
         _lastServerState.TimestampMs = state.TimestampMs;
         _hasReceivedUpdate = true;
 
-        // If velocity is very low, just tween to the exact position
-        if (state.Velocity < 0.001f)
+        long currentTimeMs = NullZustand.TimeUtils.GetUnixTimestampMs();
+        float elapsedSeconds = (currentTimeMs - state.TimestampMs) / 1000.0f;
+
+        Vector3 currentPosition = state.Position;
+        if (state.Velocity != 0f && elapsedSeconds > 0)
         {
-            _transformTweener.TweenToLocation(state.Position, state.Rotation);
+            Vector3 forward = state.Rotation * Vector3.forward;
+            currentPosition = state.Position + forward * state.Velocity * elapsedSeconds;
+        }
+
+        if (_isFirstUpdate)
+        {
+            _transformTweener.SetLocationImmediate(currentPosition, state.Rotation);
+            _isFirstUpdate = false;
+        }
+        else if (state.Velocity == 0f)
+        {
+            _transformTweener.TweenToLocation(currentPosition, state.Rotation);
         }
     }
 }

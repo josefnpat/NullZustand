@@ -9,6 +9,7 @@ namespace ClientMessageHandlers
     {
         public abstract string RequestMessageType { get; }
         public abstract string ResponseMessageType { get; }
+        public virtual string BroadcastMessageType => null;
 
         public abstract void HandleResponse(Message message, ServerController serverController);
 

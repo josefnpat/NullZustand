@@ -41,6 +41,17 @@ public class TransformTweener : MonoBehaviour
         isTweening = true;
     }
 
+    public void SetLocationImmediate(Vector3 position, Quaternion rotation)
+    {
+        transform.SetPositionAndRotation(position, rotation);
+        startPosition = position;
+        startRotation = rotation;
+        targetPosition = position;
+        targetRotation = rotation;
+        tweenProgress = 1f;
+        isTweening = false;
+    }
+
     private void Update()
     {
         if (isTweening)

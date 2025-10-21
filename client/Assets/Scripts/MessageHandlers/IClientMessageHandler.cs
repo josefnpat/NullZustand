@@ -8,6 +8,7 @@ namespace ClientMessageHandlers
     {
         string RequestMessageType { get; }
         string ResponseMessageType { get; }
+        string BroadcastMessageType { get; }
         void HandleResponse(Message message, ServerController serverController);
     }
 

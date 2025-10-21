@@ -15,8 +15,14 @@ namespace ClientMessageHandlers
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
 
-            _handlersByRequest[handler.RequestMessageType] = handler;
-            _handlersByResponse[handler.ResponseMessageType] = handler;
+            if (handler.RequestMessageType != null)
+                _handlersByRequest[handler.RequestMessageType] = handler;
+
+            if (handler.ResponseMessageType != null)
+                _handlersByResponse[handler.ResponseMessageType] = handler;
+
+            if (handler.BroadcastMessageType != null)
+                _handlersByResponse[handler.BroadcastMessageType] = handler;
         }
 
         public bool ProcessMessage(Message message, ServerController serverController)

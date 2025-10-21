@@ -153,7 +153,7 @@ namespace NullZustand
             _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
             _handlerRegistry.RegisterHandler(new RegisterRequestMessageHandler(_accountManager));
             _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager, _playerManager));
-            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager));
+            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager, _sessionManager));
             _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager));
             _handlerRegistry.RegisterHandler(new ChatMessageHandler(_chatManager, _sessionManager));
         }

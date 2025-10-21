@@ -10,6 +10,7 @@ namespace ClientMessageHandlers.Handlers
     {
         public override string RequestMessageType => MessageTypes.LOCATION_UPDATES_REQUEST;
         public override string ResponseMessageType => MessageTypes.LOCATION_UPDATES_RESPONSE;
+        public override string BroadcastMessageType => MessageTypes.LOCATION_UPDATES_BROADCAST;
 
         public async Task<string> SendRequestAsync(ServerController serverController, Action<object> onSuccess = null, Action<string> onFailure = null)
         {
@@ -32,43 +33,80 @@ namespace ClientMessageHandlers.Handlers
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
             {
-                Debug.LogWarning($"[{ResponseMessageType}] Received null or invalid payload");
+                Debug.LogWarning($"[{message.Type}] Received null or invalid payload");
                 if (message.Id != null)
                     serverController.InvokeResponseFailure(message.Id, "Invalid payload");
                 return;
             }
 
-            // Update lastLocationUpdateId
-            if (payload["lastLocationUpdateId"] != null)
+            if (message.Type == MessageTypes.LOCATION_UPDATES_BROADCAST)
             {
-                long updateId = payload["lastLocationUpdateId"].Value<long>();
-                serverController.SetLastLocationUpdateId(updateId);
+                ProcessSingleUpdate(payload, serverController);
+                return;
             }
 
-            // Apply incremental updates
-            if (payload["updates"] != null)
+            if (message.Type == MessageTypes.LOCATION_UPDATES_RESPONSE)
             {
-                var updates = payload["updates"] as JArray;
-                foreach (var update in updates)
+                // Update lastLocationUpdateId
+                if (payload["lastLocationUpdateId"] != null)
                 {
-                    string username = update["username"].Value<string>();
-                    float x = update["x"]?.Value<float>() ?? 0f;
-                    float y = update["y"]?.Value<float>() ?? 0f;
-                    float z = update["z"]?.Value<float>() ?? 0f;
-                    float rotX = update["rotX"]?.Value<float>() ?? 0f;
-                    float rotY = update["rotY"]?.Value<float>() ?? 0f;
-                    float rotZ = update["rotZ"]?.Value<float>() ?? 0f;
-                    float rotW = update["rotW"]?.Value<float>() ?? 1f;
-                    float velocity = update["velocity"]?.Value<float>() ?? 0f;
-                    long timestampMs = update["timestampMs"]?.Value<long>() ?? 0L;
-
-                    var position = new Vector3(x, y, z);
-                    var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                    serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
+                    long updateId = payload["lastLocationUpdateId"].Value<long>();
+                    serverController.SetLastLocationUpdateId(updateId);
                 }
-            }
 
-            serverController.InvokeResponseSuccess(message.Id, payload);
+                // Apply incremental updates
+                if (payload["updates"] != null)
+                {
+                    var updates = payload["updates"] as JArray;
+                    foreach (var update in updates)
+                    {
+                        ProcessSingleUpdate(update, serverController);
+                    }
+                }
+
+                serverController.InvokeResponseSuccess(message.Id, payload);
+            }
+        }
+
+        private void ProcessSingleUpdate(JToken update, ServerController serverController)
+        {
+            try
+            {
+                string username = update["username"]?.Value<string>();
+                if (string.IsNullOrEmpty(username))
+                {
+                    Debug.LogWarning("[LocationUpdate] Invalid update: missing username");
+                    return;
+                }
+
+                long updateId = update["updateId"]?.Value<long>() ?? 0;
+                float x = update["x"]?.Value<float>() ?? 0f;
+                float y = update["y"]?.Value<float>() ?? 0f;
+                float z = update["z"]?.Value<float>() ?? 0f;
+                float rotX = update["rotX"]?.Value<float>() ?? 0f;
+                float rotY = update["rotY"]?.Value<float>() ?? 0f;
+                float rotZ = update["rotZ"]?.Value<float>() ?? 0f;
+                float rotW = update["rotW"]?.Value<float>() ?? 1f;
+                float velocity = update["velocity"]?.Value<float>() ?? 0f;
+                long timestampMs = update["timestampMs"]?.Value<long>() ?? 0L;
+
+                // Update the last location update ID (for sync purposes)
+                if (updateId > serverController.GetLastLocationUpdateId())
+                {
+                    serverController.SetLastLocationUpdateId(updateId);
+                }
+
+                // Convert to Unity types
+                var position = new Vector3(x, y, z);
+                var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
+
+                // Update player location
+                serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[LocationUpdate] Failed to process update: {ex.Message}");
+            }
         }
     }
 }

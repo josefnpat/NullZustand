@@ -108,6 +108,7 @@ namespace NullZustand.MessageHandlers.Handlers
                 await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE, new
                 {
                     success = true,
+                    username = payload.username,
                     allPlayers = allPlayers,
                     lastLocationUpdateId = currentUpdateId
                 });

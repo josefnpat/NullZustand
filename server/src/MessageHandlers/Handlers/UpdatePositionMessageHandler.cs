@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace NullZustand.MessageHandlers.Handlers
 {
@@ -15,10 +16,15 @@ namespace NullZustand.MessageHandlers.Handlers
     public class UpdatePositionMessageHandler : MessageHandler
     {
         private readonly PlayerManager _playerManager;
+        private readonly SessionManager _sessionManager;
 
-        public UpdatePositionMessageHandler(PlayerManager playerManager)
+        public UpdatePositionMessageHandler(PlayerManager playerManager, SessionManager sessionManager)
         {
             _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
+            _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+
+            // Subscribe to location updates for broadcasting (similar to ChatMessageHandler pattern)
+            _playerManager.LocationUpdated += OnLocationUpdated;
         }
 
         public override string MessageType => MessageTypes.UPDATE_POSITION_REQUEST;
@@ -117,6 +123,66 @@ namespace NullZustand.MessageHandlers.Handlers
             // Send acknowledgment back to client
             await SendResponseAsync(session, message, MessageTypes.UPDATE_POSITION_RESPONSE,
                 new { success = true, updateId = updateId });
+        }
+
+        private void OnLocationUpdated(object sender, LocationUpdateEvent evt)
+        {
+            // Broadcast location update to all authenticated clients
+            // Run asynchronously to avoid blocking the PlayerManager
+            _ = Task.Run(() => BroadcastLocationUpdateAsync(evt));
+        }
+
+        private async Task BroadcastLocationUpdateAsync(LocationUpdateEvent evt)
+        {
+            var sessions = _sessionManager.GetAllAuthenticatedSessions();
+
+            // Send update to each connected client
+            foreach (var session in sessions)
+            {
+                // Synchronize writes to this session's stream
+                // Without this, multiple broadcasts can overlap and corrupt the TCP stream:
+                //   Player moves → Broadcast starts writing to stream
+                //   Player moves again → Another broadcast tries to write SAME stream
+                //   Result: Interleaved data → Connection breaks → No more messages
+                await session.StreamSemaphore.WaitAsync();
+
+                try
+                {
+                    // Now we have exclusive access to write to this session's stream
+                    string json = JsonConvert.SerializeObject(new Message
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Type = MessageTypes.LOCATION_UPDATES_BROADCAST,
+                        Payload = new
+                        {
+                            updateId = evt.UpdateId,
+                            username = evt.Username,
+                            x = evt.State.Position.X,
+                            y = evt.State.Position.Y,
+                            z = evt.State.Position.Z,
+                            rotX = evt.State.Rotation.X,
+                            rotY = evt.State.Rotation.Y,
+                            rotZ = evt.State.Rotation.Z,
+                            rotW = evt.State.Rotation.W,
+                            velocity = evt.State.Velocity,
+                            timestampMs = evt.State.TimestampMs
+                        }
+                    });
+
+                    await MessageFraming.WriteMessageAsync(session.Stream, json);
+                    Console.WriteLine($"[BROADCAST] Sent location update for {evt.Username} to {session.SessionId} [UpdateID: {evt.UpdateId}]");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] Failed to broadcast location update to {session.SessionId}: {ex.Message}");
+                }
+                finally
+                {
+                    // ALWAYS release - even if exception occurred
+                    // Ensures other tasks waiting to write can proceed
+                    session.StreamSemaphore.Release();
+                }
+            }
         }
     }
 }

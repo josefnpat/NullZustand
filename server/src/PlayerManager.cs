@@ -5,10 +5,20 @@ using System.Linq;
 
 namespace NullZustand
 {
+    public class LocationUpdateEvent : EventArgs
+    {
+        public long UpdateId { get; set; }
+        public string Username { get; set; }
+        public PlayerState State { get; set; }
+    }
+
     public class PlayerManager
     {
         private readonly ConcurrentDictionary<string, Player> _players;
         private readonly LocationUpdateTracker _locationUpdateTracker;
+
+        // Event for location updates - allows observers to react without circular dependency
+        public event EventHandler<LocationUpdateEvent> LocationUpdated;
 
         public PlayerManager()
         {
@@ -33,19 +43,19 @@ namespace NullZustand
             {
                 player.UpdateLastSeen();
 
-                PlayerState currentState = _locationUpdateTracker.GetCurrentState(username);
                 Vec3 newPosition;
+                PlayerState oldState = player.CurrentState;
 
-                if (currentState != null)
+                if (oldState.TimestampMs > 0)
                 {
                     // Calculate time elapsed since last update (in seconds)
-                    float timeDelta = (serverTimestamp - currentState.TimestampMs) / 1000.0f;
+                    float timeDelta = (serverTimestamp - oldState.TimestampMs) / 1000.0f;
 
-                    Vec3 direction = currentState.Rotation.GetForwardVector();
-                    Vec3 movement = direction * (currentState.Velocity * timeDelta);
-                    newPosition = currentState.Position + movement;
+                    Vec3 direction = oldState.Rotation.GetForwardVector();
+                    Vec3 movement = direction * (oldState.Velocity * timeDelta);
+                    newPosition = oldState.Position + movement;
 
-                    Console.WriteLine($"[PLAYER] {username} moved {movement} in {timeDelta:F3}s (old_vel: {currentState.Velocity:F2} -> new_vel: {velocity:F2})");
+                    Console.WriteLine($"[PLAYER] {username} moved {movement} in {timeDelta:F3}s (old_vel: {oldState.Velocity:F2} -> new_vel: {velocity:F2})");
                 }
                 else
                 {
@@ -53,28 +63,40 @@ namespace NullZustand
                     Console.WriteLine($"[PLAYER] {username} initialized at origin");
                 }
 
+                // Update player's current state
+                player.CurrentState = new PlayerState(newPosition, rotation, velocity, serverTimestamp);
+
+                // Record to history tracker
                 long updateId = _locationUpdateTracker.RecordUpdate(username, newPosition, rotation, velocity, serverTimestamp);
                 Console.WriteLine($"[PLAYER] Updated {username}: pos={newPosition}, rot={rotation}, vel={velocity:F2} [UpdateID: {updateId}]");
                 
+                // Raise event for location update (observers can handle broadcasting)
+                OnLocationUpdated(new LocationUpdateEvent
+                {
+                    UpdateId = updateId,
+                    Username = username,
+                    State = player.CurrentState
+                });
+
                 return updateId;
             }
 
             return -1;
         }
 
+        protected virtual void OnLocationUpdated(LocationUpdateEvent evt)
+        {
+            LocationUpdated?.Invoke(this, evt);
+        }
+
         public List<object> GetAllPlayerLocations()
         {
-            var states = _locationUpdateTracker.GetAllCurrentStates();
-            return _players.Keys.Select(username =>
+            return _players.Values.Select(player =>
             {
-                states.TryGetValue(username, out PlayerState state);
-                if (state == null)
-                {
-                    state = new PlayerState();
-                }
+                var state = player.CurrentState;
                 return new
                 {
-                    username = username,
+                    username = player.Username,
                     x = state.Position.X,
                     y = state.Position.Y,
                     z = state.Position.Z,
