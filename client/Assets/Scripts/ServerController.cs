@@ -11,6 +11,12 @@ using System.Collections.Generic;
 using ClientMessageHandlers;
 using ClientMessageHandlers.Handlers;
 
+public class ConnectionResult
+{
+    public bool Success { get; set; }
+    public string ErrorMessage { get; set; }
+}
+
 public class ServerController : MonoBehaviour
 {
     [SerializeField]
@@ -28,7 +34,8 @@ public class ServerController : MonoBehaviour
     private const float CALLBACK_CLEANUP_INTERVAL = 5f;
     private float _lastTimeSyncTime = 0f;
     private const float TIME_SYNC_INTERVAL = 60f;
-    private Task _connectionTask = null;
+    private Task<ConnectionResult> _connectionTask = null;
+    private string _lastConnectionError = null;
 
     public event Action<string, PlayerState> OnLocationUpdate; // username, playerState
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -46,7 +53,7 @@ public class ServerController : MonoBehaviour
     void Start()
     {
         LoadPinnedCertificate();
-        
+
         // Subscribe to own authentication event to trigger time sync
         OnPlayerAuthenticate += OnPlayerAuthenticated;
     }
@@ -93,9 +100,10 @@ public class ServerController : MonoBehaviour
 
     public async void Register(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        if (!await EnsureConnectedAsync())
+        var result = await EnsureConnectedAsync();
+        if (!result.Success)
         {
-            onFailure?.Invoke("Failed to connect to server");
+            onFailure?.Invoke(result.ErrorMessage);
             return;
         }
 
@@ -106,9 +114,10 @@ public class ServerController : MonoBehaviour
 
     public async void Login(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        if (!await EnsureConnectedAsync())
+        var result = await EnsureConnectedAsync();
+        if (!result.Success)
         {
-            onFailure?.Invoke("Failed to connect to server");
+            onFailure?.Invoke(result.ErrorMessage);
             return;
         }
 
@@ -119,9 +128,10 @@ public class ServerController : MonoBehaviour
 
     public async void SendPing(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        if (!await EnsureConnectedAsync())
+        var result = await EnsureConnectedAsync();
+        if (!result.Success)
         {
-            onFailure?.Invoke("Failed to connect to server");
+            onFailure?.Invoke(result.ErrorMessage);
             return;
         }
 
@@ -132,9 +142,10 @@ public class ServerController : MonoBehaviour
 
     public async void SyncTime(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        if (!await EnsureConnectedAsync())
+        var result = await EnsureConnectedAsync();
+        if (!result.Success)
         {
-            onFailure?.Invoke("Failed to connect to server");
+            onFailure?.Invoke(result.ErrorMessage);
             return;
         }
 
@@ -209,12 +220,12 @@ public class ServerController : MonoBehaviour
         }
     }
 
-    private async Task<bool> EnsureConnectedAsync()
+    private async Task<ConnectionResult> EnsureConnectedAsync()
     {
         // Already connected
         if (IsFullyConnected())
         {
-            return true;
+            return new ConnectionResult { Success = true };
         }
 
         // Clean up any stale connection state
@@ -228,14 +239,17 @@ public class ServerController : MonoBehaviour
         {
             try
             {
-                await _connectionTask;
-                return IsFullyConnected();
+                return await _connectionTask;
             }
             catch (Exception ex)
             {
                 Debug.LogWarning($"Connection attempt failed: {ex.Message}");
                 _connectionTask = null;
-                return false;
+                return new ConnectionResult
+                {
+                    Success = false,
+                    ErrorMessage = _lastConnectionError ?? "Failed to connect to server"
+                };
             }
         }
 
@@ -243,25 +257,32 @@ public class ServerController : MonoBehaviour
         _connectionTask = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
         try
         {
-            await _connectionTask;
-            return IsFullyConnected();
+            return await _connectionTask;
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"Connection attempt failed: {ex.Message}");
             _connectionTask = null;
-            return false;
+            return new ConnectionResult
+            {
+                Success = false,
+                ErrorMessage = _lastConnectionError ?? "Failed to connect to server"
+            };
         }
     }
 
-    private async Task ConnectToServerAsync(string host, int port)
+    private async Task<ConnectionResult> ConnectToServerAsync(string host, int port)
     {
+        // Reset connection error at the start of a new connection attempt
+        _lastConnectionError = null;
+
         try
         {
             if (_pinnedCertificate == null)
             {
                 Debug.LogError("Cannot connect: Pinned certificate not loaded");
-                throw new InvalidOperationException("Pinned certificate not loaded");
+                _lastConnectionError = "Pinned certificate not loaded";
+                throw new InvalidOperationException(_lastConnectionError);
             }
 
             // Connect to server
@@ -283,14 +304,19 @@ public class ServerController : MonoBehaviour
             _ = ListenForMessagesAsync();
 
             Debug.Log("Connected to server successfully");
+            return new ConnectionResult { Success = true };
         }
         catch (Exception ex)
         {
             Debug.LogError($"Failed to connect to server: {ex.Message}");
             CleanupFailedConnection();
 
-            // Re-throw so EnsureConnectedAsync knows the connection failed
-            throw;
+            // Return the specific error if we have one, otherwise generic message
+            return new ConnectionResult
+            {
+                Success = false,
+                ErrorMessage = _lastConnectionError ?? "Failed to connect to server"
+            };
         }
     }
 
@@ -329,6 +355,7 @@ public class ServerController : MonoBehaviour
         if (certificate == null || _pinnedCertificate == null)
         {
             Debug.LogError("[SSL] Certificate validation failed: Missing certificate");
+            _lastConnectionError = "Cert doesn't match. Please update client.";
             return false;
         }
 
@@ -346,6 +373,7 @@ public class ServerController : MonoBehaviour
             Debug.LogError($"[SSL] Certificate pinning validation FAILED");
             Debug.LogError($"[SSL] Server thumbprint: {serverThumbprint}");
             Debug.LogError($"[SSL] Pinned thumbprint: {pinnedThumbprint}");
+            _lastConnectionError = "Cert doesn't match. Please update client.";
         }
 
         return matches;
@@ -527,6 +555,7 @@ public class ServerController : MonoBehaviour
             _lastLocationUpdateId = 0;
             _serverClockOffset = 0;
             _lastTimeSyncTime = 0f;
+            _lastConnectionError = null;
             _playerStates.Clear();
             _responseCallbacks.CleanupExpiredCallbacks(0f);
 
