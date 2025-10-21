@@ -21,6 +21,10 @@ public class SessionController : MonoBehaviour
     private Button _pingButton;
     [SerializeField]
     private TMP_Text _timeSyncText;
+    [SerializeField]
+    private TMP_Dropdown _serverListDropdown;
+    [SerializeField]
+    private Button _serverListRefreshButton;
 
     private ServerController _serverController;
     private StatusController _statusController;
@@ -34,13 +38,29 @@ public class SessionController : MonoBehaviour
         _registerButton.onClick.AddListener(OnRegisterButtonPressed);
         _pingButton.onClick.AddListener(OnPingButtonPressed);
         _disconnectButton.onClick.AddListener(OnDisconnectButtonPressed);
+        _serverListDropdown.onValueChanged.AddListener(OnServerListDropdownChanged);
+        _serverListRefreshButton.onClick.AddListener(OnServerListRefreshButtonPressed);
 
-        // Subscribe to error events
+        // Subscribe to server events
         _serverController.OnError += OnServerError;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
         _serverController.OnTimeSyncUpdate += OnTimeSyncUpdate;
+        _serverController.OnServerListUpdate += OnServerListUpdate;
 
         _statusController.ClearStatus();
+    }
+
+    private void OnServerListUpdate()
+    {
+        var serverList = _serverController.GetServerList();
+        _serverListDropdown.ClearOptions();
+        var dropdownOptions = new System.Collections.Generic.List<TMP_Dropdown.OptionData>();
+        foreach (var server in serverList)
+        {
+            string displayName = $"{server.name} ({server.host}:{server.port})";
+            dropdownOptions.Add(new TMP_Dropdown.OptionData(displayName));
+        }
+        _serverListDropdown.AddOptions(dropdownOptions);
     }
 
     public void Update()
@@ -65,11 +85,18 @@ public class SessionController : MonoBehaviour
 
     private void TimeSyncUpdateVisual()
     {
-        long serverTimeMs = _serverController.GetServerTime();
-        DateTime serverDateTime = NullZustand.TimeUtils.FromUnixTimestampMs(serverTimeMs);
+        if (_serverController.IsConnected())
+        {
+            long serverTimeMs = _serverController.GetServerTime();
+            DateTime serverDateTime = NullZustand.TimeUtils.FromUnixTimestampMs(serverTimeMs);
 
-        string militaryTime = serverDateTime.ToString("HH:mm:ss.ffff");
-        _timeSyncText.text = $"Server Time: {militaryTime}";
+            string militaryTime = serverDateTime.ToString("HH:mm:ss.ffff");
+            _timeSyncText.text = $"Server Time: {militaryTime}";
+        }
+        else
+        {
+            _timeSyncText.text = "Not Connected";
+        }
     }
 
     public void OnLoginButtonPressed()
@@ -234,6 +261,23 @@ public class SessionController : MonoBehaviour
         _statusController.SetStatus("Disconnected from server.");
     }
 
+    private void OnServerListDropdownChanged(int index)
+    {
+        var serverList = _serverController.GetServerList();
+        if (index < 0 || index >= serverList.Count)
+        {
+            Debug.LogError($"Invalid server index: {index}");
+            return;
+        }
+        var selectedServer = serverList[index];
+        _serverController.SetCurrentServer(selectedServer);
+    }
+
+    private void OnServerListRefreshButtonPressed()
+    {
+        _serverController.FetchServerList();
+    }
+
     void OnDestroy()
     {
         if (_serverController != null)
@@ -241,6 +285,31 @@ public class SessionController : MonoBehaviour
             _serverController.OnError -= OnServerError;
             _serverController.OnSessionDisconnect -= OnSessionDisconnect;
             _serverController.OnTimeSyncUpdate -= OnTimeSyncUpdate;
+            _serverController.OnServerListUpdate -= OnServerListUpdate;
+        }
+        if (_loginButton != null)
+        {
+            _loginButton.onClick.RemoveListener(OnLoginButtonPressed);
+        }
+        if (_registerButton != null)
+        {
+            _registerButton.onClick.RemoveListener(OnRegisterButtonPressed);
+        }
+        if (_pingButton != null)
+        {
+            _pingButton.onClick.RemoveListener(OnPingButtonPressed);
+        }
+        if (_disconnectButton != null)
+        {
+            _disconnectButton.onClick.RemoveListener(OnDisconnectButtonPressed);
+        }
+        if (_serverListDropdown != null)
+        {
+            _serverListDropdown.onValueChanged.RemoveListener(OnServerListDropdownChanged);
+        }
+        if (_serverListRefreshButton != null)
+        {
+            _serverListRefreshButton.onClick.RemoveListener(OnServerListRefreshButtonPressed);
         }
     }
 

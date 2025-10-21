@@ -6,6 +6,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 using Newtonsoft.Json;
 using NullZustand;
 using System.Collections.Generic;
@@ -18,10 +19,23 @@ public class ConnectionResult
     public string ErrorMessage { get; set; }
 }
 
+[System.Serializable]
+public class ServerInfo
+{
+    public string name;
+    public string host;
+    public int port;
+}
+
+[System.Serializable]
+public class ServerListResponse
+{
+    public List<ServerInfo> servers;
+}
+
 public class ServerController : MonoBehaviour
 {
-    [SerializeField]
-    private string serverHost = "127.0.0.1";
+    private const string SERVER_LIST_URL = "https://gist.githubusercontent.com/josefnpat/11ed0e82e8068dc67697ec04dd97734b/raw/48b97c06e7922fe8017b0c3f2b92b12b8b28286f/servers.json";
 
     private TcpClient _client;
     private SslStream _stream;
@@ -38,6 +52,8 @@ public class ServerController : MonoBehaviour
     private Task<ConnectionResult> _connectionTask = null;
     private string _lastConnectionError = null;
     private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+    private List<ServerInfo> _serverList = new List<ServerInfo>();
+    private ServerInfo _currentServer;
 
     public event Action<string, PlayerState> OnLocationUpdate; // username, playerState
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -45,6 +61,7 @@ public class ServerController : MonoBehaviour
     public event Action OnPlayerAuthenticate;
     public event Action<string, string, long> OnNewChatMessage; // (username, message, timestamp)
     public event Action OnTimeSyncUpdate;
+    public event Action OnServerListUpdate;
 
     void Awake()
     {
@@ -55,9 +72,9 @@ public class ServerController : MonoBehaviour
     void Start()
     {
         LoadPinnedCertificate();
-
         // Subscribe to own authentication event to trigger time sync
         OnPlayerAuthenticate += OnPlayerAuthenticated;
+        FetchServerList();
     }
 
     void Update()
@@ -75,7 +92,7 @@ public class ServerController : MonoBehaviour
         }
 
         // Periodically sync time with server while connected
-        if (IsFullyConnected())
+        if (IsConnected())
         {
             if (Time.unscaledTime - _lastTimeSyncTime > TIME_SYNC_INTERVAL)
             {
@@ -98,6 +115,90 @@ public class ServerController : MonoBehaviour
         _handlerRegistry.RegisterHandler(new LocationUpdatesMessageHandler());
         _handlerRegistry.RegisterHandler(new ChatMessageHandler());
         _handlerRegistry.RegisterHandler(new ErrorMessageHandler());
+    }
+
+    public void FetchServerList()
+    {
+        if (string.IsNullOrEmpty(SERVER_LIST_URL))
+        {
+            SetDefaultServerList();
+        }
+        else
+        {
+            StartCoroutine(FetchServerListCoroutine());
+        }
+    }
+
+    private System.Collections.IEnumerator FetchServerListCoroutine()
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get(SERVER_LIST_URL))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    string jsonResponse = request.downloadHandler.text;
+                    ServerListResponse response = JsonConvert.DeserializeObject<ServerListResponse>(jsonResponse);
+                    if (response != null && response.servers != null && response.servers.Count > 0)
+                    {
+                        _serverList = response.servers;
+                        _currentServer = _serverList[0];
+                        OnServerListUpdate?.Invoke();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Server list was empty or invalid, using default");
+                        SetDefaultServerList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Failed to parse server list JSON: {ex.Message}");
+                    SetDefaultServerList();
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"Failed to fetch server list: {request.error}");
+                SetDefaultServerList();
+            }
+        }
+    }
+
+    private void SetDefaultServerList()
+    {
+        _serverList = new List<ServerInfo>
+        {
+            new ServerInfo
+            {
+                name = "localhost",
+                host = "127.0.0.1",
+                port = ServerConstants.DEFAULT_PORT
+            }
+        };
+        _currentServer = _serverList[0];
+        OnServerListUpdate?.Invoke();
+    }
+
+    public List<ServerInfo> GetServerList()
+    {
+        return _serverList;
+    }
+
+    public ServerInfo GetCurrentServer()
+    {
+        return _currentServer;
+    }
+
+    public void SetCurrentServer(ServerInfo server)
+    {
+        if (IsConnected())
+        {
+            Disconnect();
+        }
+        _currentServer = server;
     }
 
     public async void Register(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -190,7 +291,7 @@ public class ServerController : MonoBehaviour
         }
     }
 
-    private bool IsFullyConnected()
+    public bool IsConnected()
     {
         return _client != null && _client.Connected && _stream != null;
     }
@@ -225,7 +326,7 @@ public class ServerController : MonoBehaviour
     private async Task<ConnectionResult> EnsureConnectedAsync()
     {
         // Already connected
-        if (IsFullyConnected())
+        if (IsConnected())
         {
             return new ConnectionResult { Success = true };
         }
@@ -256,7 +357,17 @@ public class ServerController : MonoBehaviour
         }
 
         // Start new connection
-        _connectionTask = ConnectToServerAsync(serverHost, ServerConstants.DEFAULT_PORT);
+        if (_currentServer == null)
+        {
+            _lastConnectionError = "No server selected";
+            return new ConnectionResult
+            {
+                Success = false,
+                ErrorMessage = _lastConnectionError
+            };
+        }
+
+        _connectionTask = ConnectToServerAsync(_currentServer.host, _currentServer.port);
         try
         {
             return await _connectionTask;
@@ -385,7 +496,7 @@ public class ServerController : MonoBehaviour
     {
         try
         {
-            while (IsFullyConnected())
+            while (IsConnected())
             {
                 string json = await MessageFraming.ReadMessageAsync(_stream);
                 if (json == null)
@@ -521,7 +632,7 @@ public class ServerController : MonoBehaviour
     {
         try
         {
-            if (!IsFullyConnected())
+            if (!IsConnected())
             {
                 InvokeError("NOT_CONNECTED", "Cannot send message: not connected to server");
                 return;
