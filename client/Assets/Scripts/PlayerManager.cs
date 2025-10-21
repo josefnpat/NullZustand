@@ -14,12 +14,6 @@ public class PlayerManager : MonoBehaviour
     [SerializeField]
     private TMP_Text _statusText;
     [SerializeField]
-    private TMP_InputField _xPositionInputField;
-    [SerializeField]
-    private TMP_InputField _yPositionInputField;
-    [SerializeField]
-    private TMP_InputField _zPositionInputField;
-    [SerializeField]
     private TMP_InputField _xRotationInputField;
     [SerializeField]
     private TMP_InputField _yRotationInputField;
@@ -27,6 +21,8 @@ public class PlayerManager : MonoBehaviour
     private TMP_InputField _zRotationInputField;
     [SerializeField]
     private TMP_InputField _wRotationInputField;
+    [SerializeField]
+    private TMP_InputField _velocityInputField;
     [SerializeField]
     private Button _updateLocationButton;
     [SerializeField]
@@ -48,7 +44,7 @@ public class PlayerManager : MonoBehaviour
         _statusController.ClearStatus();
     }
 
-    private void OnLocationUpdate(string username, Vector3 position, Quaternion rotation)
+    private void OnLocationUpdate(string username, PlayerState state)
     {
         PlayerController playerController;
         if (_playerControllers.ContainsKey(username))
@@ -61,33 +57,19 @@ public class PlayerManager : MonoBehaviour
             playerController = go.GetComponent<PlayerController>();
             _playerControllers.Add(username, playerController);
         }
-        playerController.SetLocation(position, rotation);
+        playerController.SetLocation(state);
     }
 
     public void OnUpdateLocationButtonPressed()
     {
         _statusController.ClearStatus();
 
-        // Validate and parse all input fields
-        bool xValidPosition = float.TryParse(_xPositionInputField.text, out float xPos);
-        bool yValidPosition = float.TryParse(_yPositionInputField.text, out float yPos);
-        bool zValidPosition = float.TryParse(_zPositionInputField.text, out float zPos);
+        // Validate and parse rotation and velocity input fields
         bool xValidRotation = float.TryParse(_xRotationInputField.text, out float xRot);
         bool yValidRotation = float.TryParse(_yRotationInputField.text, out float yRot);
         bool zValidRotation = float.TryParse(_zRotationInputField.text, out float zRot);
         bool wValidRotation = float.TryParse(_wRotationInputField.text, out float wRot);
-
-        if (!xValidPosition || !yValidPosition || !zValidPosition)
-        {
-            _statusController.SetStatus("Invalid coordinates. Please enter valid numbers.");
-            return;
-        }
-
-        if (!IsValidCoordinate(xPos) || !IsValidCoordinate(yPos) || !IsValidCoordinate(zPos))
-        {
-            _statusController.SetStatus($"Coordinates must be between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}");
-            return;
-        }
+        bool velocityValid = float.TryParse(_velocityInputField.text, out float velocity);
 
         if (!xValidRotation || !yValidRotation || !zValidRotation || !wValidRotation)
         {
@@ -101,7 +83,28 @@ public class PlayerManager : MonoBehaviour
             return;
         }
 
-        _serverController.UpdatePosition(xPos, yPos, zPos, xRot, yRot, zRot, wRot, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+        if (!velocityValid)
+        {
+            _statusController.SetStatus("Invalid velocity. Please enter a valid number.");
+            return;
+        }
+
+        if (!IsValidVelocity(velocity))
+        {
+            _statusController.SetStatus("Invalid velocity. Velocity must be a valid number.");
+            return;
+        }
+
+        // Validate velocity is non-negative
+        if (velocity < 0)
+        {
+            _statusController.SetStatus("Velocity must be non-negative.");
+            return;
+        }
+
+        var rotation = new Quaternion(xRot, yRot, zRot, wRot);
+
+        _serverController.UpdatePosition(rotation, velocity, OnUpdatePositionSuccess, OnUpdatePositionFailure);
     }
 
     private void OnUpdatePositionSuccess(object payload)
@@ -124,15 +127,12 @@ public class PlayerManager : MonoBehaviour
         _statusController.SetStatus($"Position update failed: {error}");
     }
 
-    private bool IsValidCoordinate(float value)
+    private bool IsValidRotation(float value)
     {
-        return !float.IsNaN(value) &&
-            !float.IsInfinity(value) &&
-            value >= ValidationConstants.MIN_COORDINATE &&
-            value <= ValidationConstants.MAX_COORDINATE;
+        return !float.IsNaN(value) && !float.IsInfinity(value);
     }
 
-    private bool IsValidRotation(float value)
+    private bool IsValidVelocity(float value)
     {
         return !float.IsNaN(value) && !float.IsInfinity(value);
     }

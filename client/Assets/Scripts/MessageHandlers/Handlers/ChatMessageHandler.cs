@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class ChatMessageHandler : ClientHandler, IClientHandler<string>
+    public class ChatMessageHandler : ClientMessageHandler, IClientMessageHandler<string>
     {
         public override string RequestMessageType => MessageTypes.CHAT_MESSAGE_REQUEST;
         public override string ResponseMessageType => MessageTypes.CHAT_MESSAGE_RESPONSE;

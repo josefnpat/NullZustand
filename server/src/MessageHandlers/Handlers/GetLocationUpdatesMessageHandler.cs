@@ -46,13 +46,15 @@ namespace NullZustand.MessageHandlers.Handlers
                 {
                     updateId = u.UpdateId,
                     username = u.Username,
-                    x = u.X,
-                    y = u.Y,
-                    z = u.Z,
-                    rotX = u.RotX,
-                    rotY = u.RotY,
-                    rotZ = u.RotZ,
-                    rotW = u.RotW,
+                    x = u.Position.X,
+                    y = u.Position.Y,
+                    z = u.Position.Z,
+                    rotX = u.Rotation.X,
+                    rotY = u.Rotation.Y,
+                    rotZ = u.Rotation.Z,
+                    rotW = u.Rotation.W,
+                    velocity = u.Velocity,
+                    timestampMs = u.TimestampMs,
                     timestamp = u.Timestamp.ToString("o") // ISO 8601 format
                 }).ToList();
 

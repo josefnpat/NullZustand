@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class LoginHandler : ClientHandler, IClientHandler<string, string>
+    public class LoginHandlerMessageHandler : ClientMessageHandler, IClientMessageHandler<string, string>
     {
         public override string RequestMessageType => MessageTypes.LOGIN_REQUEST;
         public override string ResponseMessageType => MessageTypes.LOGIN_RESPONSE;
@@ -61,10 +61,12 @@ namespace ClientMessageHandlers.Handlers
                         float rotY = player["rotY"]?.Value<float>() ?? 0f;
                         float rotZ = player["rotZ"]?.Value<float>() ?? 0f;
                         float rotW = player["rotW"]?.Value<float>() ?? 1f;
+                        float velocity = player["velocity"]?.Value<float>() ?? 0f;
+                        long timestampMs = player["timestampMs"]?.Value<long>() ?? 0L;
 
                         var position = new Vector3(x, y, z);
                         var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                        serverController.UpdatePlayerLocation(username, position, rotation);
+                        serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
                     }
                 }
 

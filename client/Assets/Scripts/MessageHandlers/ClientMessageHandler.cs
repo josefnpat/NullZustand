@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers
 {
-    public abstract class ClientHandler : IClientHandler
+    public abstract class ClientMessageHandler : IClientMessageHandler
     {
         public abstract string RequestMessageType { get; }
         public abstract string ResponseMessageType { get; }

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class LocationUpdatesHandler : ClientHandler, IClientHandlerNoParam
+    public class LocationUpdatesMessageHandler : ClientMessageHandler, IClientMessageHandlerNoParam
     {
         public override string RequestMessageType => MessageTypes.LOCATION_UPDATES_REQUEST;
         public override string ResponseMessageType => MessageTypes.LOCATION_UPDATES_RESPONSE;
@@ -59,10 +59,12 @@ namespace ClientMessageHandlers.Handlers
                     float rotY = update["rotY"]?.Value<float>() ?? 0f;
                     float rotZ = update["rotZ"]?.Value<float>() ?? 0f;
                     float rotW = update["rotW"]?.Value<float>() ?? 1f;
+                    float velocity = update["velocity"]?.Value<float>() ?? 0f;
+                    long timestampMs = update["timestampMs"]?.Value<long>() ?? 0L;
 
                     var position = new Vector3(x, y, z);
                     var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                    serverController.UpdatePlayerLocation(username, position, rotation);
+                    serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
                 }
             }
 

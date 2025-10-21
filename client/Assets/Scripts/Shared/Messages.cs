@@ -15,8 +15,11 @@ namespace NullZustand
 
     public static class MessageTypes
     {
+        // todo: Sort message types alphabetically
         public const string PING = "Ping";
         public const string PONG = "Pong";
+        public const string TIME_SYNC_REQUEST = "TimeSyncRequest";
+        public const string TIME_SYNC_RESPONSE = "TimeSyncResponse";
         public const string REGISTER_REQUEST = "RegisterRequest";
         public const string REGISTER_RESPONSE = "RegisterResponse";
         public const string LOGIN_REQUEST = "LoginRequest";
@@ -54,6 +57,21 @@ namespace NullZustand
         // Coordinate validation
         public const float MIN_COORDINATE = -100000f;
         public const float MAX_COORDINATE = 100000f;
+    }
+
+    public static class TimeUtils
+    {
+        private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        public static long GetUnixTimestampMs()
+        {
+            return (long)(DateTime.UtcNow - UnixEpoch).TotalMilliseconds;
+        }
+
+        public static DateTime FromUnixTimestampMs(long timestampMs)
+        {
+            return UnixEpoch.AddMilliseconds(timestampMs);
+        }
     }
 
     public static class MessageFraming

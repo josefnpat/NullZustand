@@ -20,19 +20,22 @@ public class ServerController : MonoBehaviour
     private SslStream _stream;
     private X509Certificate2 _pinnedCertificate;
     private long _lastLocationUpdateId = 0;
-    private Dictionary<string, Vector3> _playerPositions = new Dictionary<string, Vector3>();
-    private Dictionary<string, Quaternion> _playerRotations = new Dictionary<string, Quaternion>();
+    private Dictionary<string, PlayerState> _playerStates = new Dictionary<string, PlayerState>();
+    private long _serverClockOffset = 0;
     private ClientMessageHandlerRegistry _handlerRegistry;
     private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
     private float _lastCallbackCleanupTime = 0f;
     private const float CALLBACK_CLEANUP_INTERVAL = 5f;
+    private float _lastTimeSyncTime = 0f;
+    private const float TIME_SYNC_INTERVAL = 60f;
     private Task _connectionTask = null;
 
-    public event Action<string, Vector3, Quaternion> OnLocationUpdate;
+    public event Action<string, PlayerState> OnLocationUpdate; // username, playerState
     public event Action<string, string> OnError; // (errorCode, errorMessage)
     public event Action OnSessionDisconnect;
     public event Action OnPlayerAuthenticate;
     public event Action<string, string, long> OnNewChatMessage; // (username, message, timestamp)
+    public event Action OnTimeSyncUpdate;
 
     void Awake()
     {
@@ -43,6 +46,9 @@ public class ServerController : MonoBehaviour
     void Start()
     {
         LoadPinnedCertificate();
+        
+        // Subscribe to own authentication event to trigger time sync
+        OnPlayerAuthenticate += OnPlayerAuthenticated;
     }
 
     void Update()
@@ -58,20 +64,31 @@ public class ServerController : MonoBehaviour
                 Debug.LogWarning($"[ServerController] Cleaned up {cleanedUp} expired callback(s)");
             }
         }
+
+        // Periodically sync time with server while connected
+        if (IsFullyConnected())
+        {
+            if (Time.unscaledTime - _lastTimeSyncTime > TIME_SYNC_INTERVAL)
+            {
+                _lastTimeSyncTime = Time.unscaledTime;
+                SyncTime(OnSyncTimeSuccess, OnSyncTimeFailure);
+            }
+        }
     }
 
     private void InitializeHandlers()
     {
         _handlerRegistry = new ClientMessageHandlerRegistry();
-
+        // todo: sort alphabetically
         // Register message handlers - easily comment out any handler to disable it
-        _handlerRegistry.RegisterHandler(new RegisterHandler());
-        _handlerRegistry.RegisterHandler(new LoginHandler());
-        _handlerRegistry.RegisterHandler(new PingHandler());
-        _handlerRegistry.RegisterHandler(new UpdatePositionHandler());
-        _handlerRegistry.RegisterHandler(new LocationUpdatesHandler());
+        _handlerRegistry.RegisterHandler(new RegisterMessageHandler());
+        _handlerRegistry.RegisterHandler(new LoginHandlerMessageHandler());
+        _handlerRegistry.RegisterHandler(new PingMessageHandler());
+        _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
+        _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
+        _handlerRegistry.RegisterHandler(new LocationUpdatesMessageHandler());
         _handlerRegistry.RegisterHandler(new ChatMessageHandler());
-        _handlerRegistry.RegisterHandler(new ErrorHandler());
+        _handlerRegistry.RegisterHandler(new ErrorMessageHandler());
     }
 
     public async void Register(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -82,7 +99,7 @@ public class ServerController : MonoBehaviour
             return;
         }
 
-        var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.REGISTER_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string, string>>(MessageTypes.REGISTER_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
     }
@@ -95,7 +112,7 @@ public class ServerController : MonoBehaviour
             return;
         }
 
-        var handler = _handlerRegistry.GetHandler<IClientHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
     }
@@ -108,28 +125,41 @@ public class ServerController : MonoBehaviour
             return;
         }
 
-        var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.PING);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandlerNoParam>(MessageTypes.PING);
         if (handler != null)
             await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
-    public async void UpdatePosition(float x, float y, float z, float rotX, float rotY, float rotZ, float rotW, Action<object> onSuccess = null, Action<string> onFailure = null)
+    public async void SyncTime(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientHandler<float, float, float, float, float, float, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
+        if (!await EnsureConnectedAsync())
+        {
+            onFailure?.Invoke("Failed to connect to server");
+            return;
+        }
+
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandlerNoParam>(MessageTypes.TIME_SYNC_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, x, y, z, rotX, rotY, rotZ, rotW, onSuccess, onFailure);
+            await handler.SendRequestAsync(this, onSuccess, onFailure);
+    }
+
+    public async void UpdatePosition(Quaternion rotation, float velocity, Action<object> onSuccess = null, Action<string> onFailure = null)
+    {
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<Quaternion, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
+        if (handler != null)
+            await handler.SendRequestAsync(this, rotation, velocity, onSuccess, onFailure);
     }
 
     public async void GetLocationUpdates(Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientHandlerNoParam>(MessageTypes.LOCATION_UPDATES_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandlerNoParam>(MessageTypes.LOCATION_UPDATES_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, onSuccess, onFailure);
     }
 
     public async void SendNewChatMessage(string message, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientHandler<string>>(MessageTypes.CHAT_MESSAGE_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string>>(MessageTypes.CHAT_MESSAGE_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, message, onSuccess, onFailure);
     }
@@ -145,6 +175,16 @@ public class ServerController : MonoBehaviour
         {
             Debug.Log("Not connected to server.");
         }
+    }
+
+    private bool IsFullyConnected()
+    {
+        return _client != null && _client.Connected && _stream != null;
+    }
+
+    private bool IsClientDisconnected()
+    {
+        return _client != null && !_client.Connected;
     }
 
     private void LoadPinnedCertificate()
@@ -172,13 +212,13 @@ public class ServerController : MonoBehaviour
     private async Task<bool> EnsureConnectedAsync()
     {
         // Already connected
-        if (_client != null && _client.Connected && _stream != null)
+        if (IsFullyConnected())
         {
             return true;
         }
 
         // Clean up any stale connection state
-        if (_client != null && !_client.Connected)
+        if (IsClientDisconnected())
         {
             CleanupFailedConnection();
         }
@@ -189,7 +229,7 @@ public class ServerController : MonoBehaviour
             try
             {
                 await _connectionTask;
-                return _client != null && _client.Connected && _stream != null;
+                return IsFullyConnected();
             }
             catch (Exception ex)
             {
@@ -204,7 +244,7 @@ public class ServerController : MonoBehaviour
         try
         {
             await _connectionTask;
-            return _client != null && _client.Connected && _stream != null;
+            return IsFullyConnected();
         }
         catch (Exception ex)
         {
@@ -315,7 +355,7 @@ public class ServerController : MonoBehaviour
     {
         try
         {
-            while (_client != null && _client.Connected)
+            while (IsFullyConnected())
             {
                 string json = await MessageFraming.ReadMessageAsync(_stream);
                 if (json == null)
@@ -368,11 +408,20 @@ public class ServerController : MonoBehaviour
         return _lastLocationUpdateId;
     }
 
-    public void UpdatePlayerLocation(string username, Vector3 position, Quaternion rotation)
+    public void UpdatePlayerLocation(string username, Vector3 position, Quaternion rotation, float velocity, long timestampMs)
     {
-        _playerPositions[username] = position;
-        _playerRotations[username] = rotation;
-        OnLocationUpdate?.Invoke(username, position, rotation);
+        if (!_playerStates.TryGetValue(username, out PlayerState state))
+        {
+            state = new PlayerState();
+            _playerStates[username] = state;
+        }
+
+        state.Position = position;
+        state.Rotation = rotation;
+        state.Velocity = velocity;
+        state.TimestampMs = timestampMs;
+
+        OnLocationUpdate?.Invoke(username, state);
     }
 
     public void RegisterResponseCallbacks(string messageId, Action<object> onSuccess, Action<string> onFailure)
@@ -405,11 +454,44 @@ public class ServerController : MonoBehaviour
         OnNewChatMessage?.Invoke(username, message, timestamp);
     }
 
+    private void OnPlayerAuthenticated()
+    {
+        // Automatically sync time with server after successful login
+        SyncTime(OnSyncTimeSuccess, OnSyncTimeFailure);
+    }
+
+    private void OnSyncTimeSuccess(object payload)
+    {
+        Debug.Log("[ServerController] Time synchronized.");
+    }
+
+    private void OnSyncTimeFailure(string error)
+    {
+        Debug.LogWarning($"[ServerController] Failed to sync time: {error}");
+    }
+
+    public void SetServerClockOffset(long offsetMs)
+    {
+        _serverClockOffset = offsetMs;
+        long serverTime = GetServerTime();
+        Debug.Log($"[ServerController] Server clock offset set to: {offsetMs}ms, Server time: {serverTime}ms");
+
+        _lastTimeSyncTime = Time.unscaledTime;
+
+        OnTimeSyncUpdate?.Invoke();
+    }
+
+    public long GetServerTime()
+    {
+        long localTime = NullZustand.TimeUtils.GetUnixTimestampMs();
+        return localTime + _serverClockOffset;
+    }
+
     public async Task SendMessageAsync(Message message)
     {
         try
         {
-            if (_stream == null || !_client.Connected)
+            if (!IsFullyConnected())
             {
                 InvokeError("NOT_CONNECTED", "Cannot send message: not connected to server");
                 return;
@@ -443,8 +525,9 @@ public class ServerController : MonoBehaviour
             _client = null;
             _connectionTask = null;
             _lastLocationUpdateId = 0;
-            _playerPositions.Clear();
-            _playerRotations.Clear();
+            _serverClockOffset = 0;
+            _lastTimeSyncTime = 0f;
+            _playerStates.Clear();
             _responseCallbacks.CleanupExpiredCallbacks(0f);
 
             // Notify subscribers that session has disconnected
@@ -457,6 +540,7 @@ public class ServerController : MonoBehaviour
 
     void OnDestroy()
     {
+        OnPlayerAuthenticate -= OnPlayerAuthenticated;
         Cleanup();
     }
 

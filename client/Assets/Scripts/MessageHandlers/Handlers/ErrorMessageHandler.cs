@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class ErrorHandler : ClientHandler, IClientHandlerNoParam
+    public class ErrorMessageHandler : ClientMessageHandler, IClientMessageHandlerNoParam
     {
         public override string RequestMessageType => MessageTypes.ERROR; // Not used for error
         public override string ResponseMessageType => MessageTypes.ERROR;
@@ -54,10 +54,12 @@ namespace ClientMessageHandlers.Handlers
                         float rotY = player["rotY"]?.Value<float>() ?? 0f;
                         float rotZ = player["rotZ"]?.Value<float>() ?? 0f;
                         float rotW = player["rotW"]?.Value<float>() ?? 1f;
+                        float velocity = player["velocity"]?.Value<float>() ?? 0f;
+                        long timestampMs = player["timestampMs"]?.Value<long>() ?? 0L;
 
                         var position = new Vector3(x, y, z);
                         var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                        serverController.UpdatePlayerLocation(username, position, rotation);
+                        serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
                     }
                 }
 

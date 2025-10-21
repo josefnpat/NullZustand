@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class RegisterHandler : ClientHandler, IClientHandler<string, string>
+    public class RegisterMessageHandler : ClientMessageHandler, IClientMessageHandler<string, string>
     {
         public override string RequestMessageType => MessageTypes.REGISTER_REQUEST;
         public override string ResponseMessageType => MessageTypes.REGISTER_RESPONSE;

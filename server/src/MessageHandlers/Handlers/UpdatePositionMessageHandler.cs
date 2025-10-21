@@ -5,13 +5,11 @@ namespace NullZustand.MessageHandlers.Handlers
 {
     public class UpdatePositionPayload
     {
-        public float x { get; set; }
-        public float y { get; set; }
-        public float z { get; set; }
         public float rotX { get; set; }
         public float rotY { get; set; }
         public float rotZ { get; set; }
         public float rotW { get; set; }
+        public float velocity { get; set; }
     }
 
     public class UpdatePositionMessageHandler : MessageHandler
@@ -28,23 +26,6 @@ namespace NullZustand.MessageHandlers.Handlers
         // Requires authentication - only logged in players can update position
         public override bool RequiresAuthentication => true;
 
-        private bool IsValidCoordinate(float value)
-        {
-            // Check for NaN and infinity
-            if (float.IsNaN(value) || float.IsInfinity(value))
-            {
-                return false;
-            }
-
-            // Check bounds
-            if (value < ValidationConstants.MIN_COORDINATE || value > ValidationConstants.MAX_COORDINATE)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
         public override async Task HandleAsync(Message message, ClientSession session)
         {
             var payload = GetPayload<UpdatePositionPayload>(message);
@@ -58,24 +39,6 @@ namespace NullZustand.MessageHandlers.Handlers
             if (session.Player == null)
             {
                 Console.WriteLine($"[WARNING] UpdatePosition received but session has no player: {session.SessionId}");
-                return;
-            }
-
-            // Validate coordinates
-            if (!IsValidCoordinate(payload.x) || !IsValidCoordinate(payload.y) || !IsValidCoordinate(payload.z))
-            {
-                Console.WriteLine($"[WARNING] Invalid coordinates from {session.Username}: ({payload.x}, {payload.y}, {payload.z})");
-
-                await SendAsync(session, new Message
-                {
-                    Id = message.Id,
-                    Type = MessageTypes.ERROR,
-                    Payload = new
-                    {
-                        code = "INVALID_COORDINATES",
-                        message = $"Invalid coordinates. Values must be valid numbers between {ValidationConstants.MIN_COORDINATE} and {ValidationConstants.MAX_COORDINATE}."
-                    }
-                });
                 return;
             }
 
@@ -100,11 +63,34 @@ namespace NullZustand.MessageHandlers.Handlers
                 return;
             }
 
-            // Update the player's position and rotation
-            long updateId = _playerManager.UpdatePlayerPosition(session.Username, payload.x, payload.y, payload.z, 
-                payload.rotX, payload.rotY, payload.rotZ, payload.rotW);
+            // Validate velocity (must be non-negative)
+            if (float.IsNaN(payload.velocity) || float.IsInfinity(payload.velocity) || payload.velocity < 0)
+            {
+                Console.WriteLine($"[WARNING] Invalid velocity from {session.Username}: {payload.velocity}");
 
-            Console.WriteLine($"[POSITION] {session.Username} moved to ({payload.x:F2}, {payload.y:F2}, {payload.z:F2}), rotation: ({payload.rotX:F2}, {payload.rotY:F2}, {payload.rotZ:F2}, {payload.rotW:F2}) [UpdateID: {updateId}]");
+                await SendAsync(session, new Message
+                {
+                    Id = message.Id,
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "INVALID_VELOCITY",
+                        message = "Invalid velocity. Velocity must be a valid non-negative number."
+                    }
+                });
+                return;
+            }
+
+            // Create Quat from validated payload
+            var rotation = new Quat(payload.rotX, payload.rotY, payload.rotZ, payload.rotW);
+
+            // Server generates timestamp and calculates position
+            long serverTimestamp = TimeUtils.GetUnixTimestampMs();
+
+            // Update the player's rotation and velocity (server calculates position)
+            long updateId = _playerManager.UpdatePlayerMovement(session.Username, rotation, payload.velocity, serverTimestamp);
+
+            Console.WriteLine($"[POSITION] {session.Username} rotation: {rotation}, velocity: {payload.velocity:F2} [UpdateID: {updateId}]");
 
             // Send acknowledgment back to client
             await SendResponseAsync(session, message, MessageTypes.UPDATE_POSITION_RESPONSE,

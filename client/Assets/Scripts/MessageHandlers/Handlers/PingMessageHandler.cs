@@ -4,7 +4,7 @@ using NullZustand;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class PingHandler : ClientHandler, IClientHandlerNoParam
+    public class PingMessageHandler : ClientMessageHandler, IClientMessageHandlerNoParam
     {
         public override string RequestMessageType => MessageTypes.PING;
         public override string ResponseMessageType => MessageTypes.PONG;

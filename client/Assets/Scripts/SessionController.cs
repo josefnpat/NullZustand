@@ -17,9 +17,10 @@ public class SessionController : MonoBehaviour
     private Button _registerButton;
     [SerializeField]
     private Button _disconnectButton;
-
     [SerializeField]
     private Button _pingButton;
+    [SerializeField]
+    private TMP_Text _timeSyncText;
 
     private ServerController _serverController;
     private StatusController _statusController;
@@ -37,8 +38,14 @@ public class SessionController : MonoBehaviour
         // Subscribe to error events
         _serverController.OnError += OnServerError;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
+        _serverController.OnTimeSyncUpdate += OnTimeSyncUpdate;
 
         _statusController.ClearStatus();
+    }
+
+    public void Update()
+    {
+        TimeSyncUpdateVisual();
     }
 
     private void OnServerError(string code, string message)
@@ -49,6 +56,20 @@ public class SessionController : MonoBehaviour
     private void OnSessionDisconnect()
     {
         _statusController.SetStatus("Disconnected from server.");
+    }
+
+    private void OnTimeSyncUpdate()
+    {
+        TimeSyncUpdateVisual();
+    }
+
+    private void TimeSyncUpdateVisual()
+    {
+        long serverTimeMs = _serverController.GetServerTime();
+        DateTime serverDateTime = NullZustand.TimeUtils.FromUnixTimestampMs(serverTimeMs);
+
+        string militaryTime = serverDateTime.ToString("HH:mm:ss.ffff");
+        _timeSyncText.text = $"Server Time: {militaryTime}";
     }
 
     public void OnLoginButtonPressed()
@@ -219,6 +240,7 @@ public class SessionController : MonoBehaviour
         {
             _serverController.OnError -= OnServerError;
             _serverController.OnSessionDisconnect -= OnSessionDisconnect;
+            _serverController.OnTimeSyncUpdate -= OnTimeSyncUpdate;
         }
     }
 

@@ -26,16 +26,36 @@ namespace NullZustand
             });
         }
 
-        public long UpdatePlayerPosition(string username, float x, float y, float z, float rotX, float rotY, float rotZ, float rotW)
+        public long UpdatePlayerMovement(string username, Quat rotation, float velocity, long serverTimestamp)
         {
             _players.TryGetValue(username, out Player player);
             if (player != null)
             {
                 player.UpdateLastSeen();
-                long updateId = _locationUpdateTracker.RecordUpdate(username, x, y, z, rotX, rotY, rotZ, rotW);
-                Vector3 position = _locationUpdateTracker.GetCurrentPosition(username);
-                Quaternion rotation = _locationUpdateTracker.GetCurrentRotation(username);
-                Console.WriteLine($"[PLAYER] Updated position for {username}: {position}, rotation: {rotation} [UpdateID: {updateId}]");
+
+                PlayerState currentState = _locationUpdateTracker.GetCurrentState(username);
+                Vec3 newPosition;
+
+                if (currentState != null)
+                {
+                    // Calculate time elapsed since last update (in seconds)
+                    float timeDelta = (serverTimestamp - currentState.TimestampMs) / 1000.0f;
+
+                    Vec3 direction = currentState.Rotation.GetForwardVector();
+                    Vec3 movement = direction * (currentState.Velocity * timeDelta);
+                    newPosition = currentState.Position + movement;
+
+                    Console.WriteLine($"[PLAYER] {username} moved {movement} in {timeDelta:F3}s (old_vel: {currentState.Velocity:F2} -> new_vel: {velocity:F2})");
+                }
+                else
+                {
+                    newPosition = new Vec3(0, 0, 0);
+                    Console.WriteLine($"[PLAYER] {username} initialized at origin");
+                }
+
+                long updateId = _locationUpdateTracker.RecordUpdate(username, newPosition, rotation, velocity, serverTimestamp);
+                Console.WriteLine($"[PLAYER] Updated {username}: pos={newPosition}, rot={rotation}, vel={velocity:F2} [UpdateID: {updateId}]");
+                
                 return updateId;
             }
 
@@ -44,30 +64,26 @@ namespace NullZustand
 
         public List<object> GetAllPlayerLocations()
         {
-            var positions = _locationUpdateTracker.GetAllCurrentPositions();
-            var rotations = _locationUpdateTracker.GetAllCurrentRotations();
+            var states = _locationUpdateTracker.GetAllCurrentStates();
             return _players.Keys.Select(username =>
             {
-                positions.TryGetValue(username, out Vector3 pos);
-                if (pos == null)
+                states.TryGetValue(username, out PlayerState state);
+                if (state == null)
                 {
-                    pos = new Vector3(0, 0, 0); // Default position if not yet set
-                }
-                rotations.TryGetValue(username, out Quaternion rot);
-                if (rot == null)
-                {
-                    rot = new Quaternion(0, 0, 0, 1); // Default rotation (identity)
+                    state = new PlayerState();
                 }
                 return new
                 {
                     username = username,
-                    x = pos.X,
-                    y = pos.Y,
-                    z = pos.Z,
-                    rotX = rot.X,
-                    rotY = rot.Y,
-                    rotZ = rot.Z,
-                    rotW = rot.W
+                    x = state.Position.X,
+                    y = state.Position.Y,
+                    z = state.Position.Z,
+                    rotX = state.Rotation.X,
+                    rotY = state.Rotation.Y,
+                    rotZ = state.Rotation.Z,
+                    rotW = state.Rotation.W,
+                    velocity = state.Velocity,
+                    timestampMs = state.TimestampMs
                 };
             }).Cast<object>().ToList();
         }

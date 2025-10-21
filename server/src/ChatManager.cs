@@ -30,7 +30,7 @@ namespace NullZustand
                 {
                     Username = username,
                     Message = message,
-                    Timestamp = GetUnixTimestampMilliseconds()
+                    Timestamp = TimeUtils.GetUnixTimestampMs()
                 };
 
                 _chatHistory.Add(chatMessage);
@@ -44,12 +44,6 @@ namespace NullZustand
                 Console.WriteLine($"[CHAT] {username}: {message}");
             }
         }
-
-        private long GetUnixTimestampMilliseconds()
-        {
-            return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
-        }
-
 
     }
 }

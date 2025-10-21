@@ -7,10 +7,10 @@ namespace ClientMessageHandlers
 {
     public class ClientMessageHandlerRegistry
     {
-        private readonly Dictionary<string, IClientHandler> _handlersByRequest = new Dictionary<string, IClientHandler>();
-        private readonly Dictionary<string, IClientHandler> _handlersByResponse = new Dictionary<string, IClientHandler>();
+        private readonly Dictionary<string, IClientMessageHandler> _handlersByRequest = new Dictionary<string, IClientMessageHandler>();
+        private readonly Dictionary<string, IClientMessageHandler> _handlersByResponse = new Dictionary<string, IClientMessageHandler>();
 
-        public void RegisterHandler(IClientHandler handler)
+        public void RegisterHandler(IClientMessageHandler handler)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -21,7 +21,7 @@ namespace ClientMessageHandlers
 
         public bool ProcessMessage(Message message, ServerController serverController)
         {
-            if (_handlersByResponse.TryGetValue(message.Type, out IClientHandler handler))
+            if (_handlersByResponse.TryGetValue(message.Type, out IClientMessageHandler handler))
             {
                 try
                 {
@@ -38,9 +38,9 @@ namespace ClientMessageHandlers
             return false;
         }
 
-        public T GetHandler<T>(string requestMessageType) where T : class, IClientHandler
+        public T GetHandler<T>(string requestMessageType) where T : class, IClientMessageHandler
         {
-            if (_handlersByRequest.TryGetValue(requestMessageType, out IClientHandler handler))
+            if (_handlersByRequest.TryGetValue(requestMessageType, out IClientMessageHandler handler))
             {
                 return handler as T;
             }

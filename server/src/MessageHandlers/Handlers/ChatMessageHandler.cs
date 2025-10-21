@@ -77,7 +77,7 @@ namespace NullZustand.MessageHandlers.Handlers
         private async Task BroadcastChatMessageAsync(string username, string message)
         {
             var sessions = _sessionManager.GetAllAuthenticatedSessions();
-            long timestamp = GetUnixTimestampMilliseconds();
+            long timestamp = TimeUtils.GetUnixTimestampMs();
             
             foreach (var session in sessions)
             {
@@ -95,11 +95,6 @@ namespace NullZustand.MessageHandlers.Handlers
                     Console.WriteLine($"[ERROR] Failed to broadcast chat message to {session.SessionId}: {ex.Message}");
                 }
             }
-        }
-
-        private long GetUnixTimestampMilliseconds()
-        {
-            return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
         }
     }
 }
