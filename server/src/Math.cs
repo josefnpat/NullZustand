@@ -51,6 +51,31 @@ namespace NullZustand
             W = w;
         }
 
+        public void Normalize()
+        {
+            float length = (float)System.Math.Sqrt(X * X + Y * Y + Z * Z + W * W);
+
+            if (length > 0.0001f)
+            {
+                X /= length;
+                Y /= length;
+                Z /= length;
+                W /= length;
+            }
+            else
+            {
+                X = 0f;
+                Y = 0f;
+                Z = 0f;
+                W = 1f;
+            }
+        }
+
+        public float Magnitude()
+        {
+            return (float)System.Math.Sqrt(X * X + Y * Y + Z * Z + W * W);
+        }
+
         public Vec3 RotateVector(Vec3 v)
         {
             // q * v * q^-1 (quaternion-vector multiplication)

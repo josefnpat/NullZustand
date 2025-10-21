@@ -84,6 +84,28 @@ namespace NullZustand.MessageHandlers.Handlers
             // Create Quat from validated payload
             var rotation = new Quat(payload.rotX, payload.rotY, payload.rotZ, payload.rotW);
 
+            // Check if quaternion is near-zero (degenerate)
+            float quatMagnitude = rotation.Magnitude();
+            if (quatMagnitude < 0.0001f)
+            {
+                Console.WriteLine($"[WARNING] Degenerate quaternion from {session.Username}: magnitude={quatMagnitude}");
+
+                await SendAsync(session, new Message
+                {
+                    Id = message.Id,
+                    Type = MessageTypes.ERROR,
+                    Payload = new
+                    {
+                        code = "INVALID_ROTATION",
+                        message = "Invalid rotation. Quaternion magnitude is too small."
+                    }
+                });
+                return;
+            }
+
+            // Normalize quaternion to ensure unit length
+            rotation.Normalize();
+
             // Server generates timestamp and calculates position
             long serverTimestamp = TimeUtils.GetUnixTimestampMs();
 
