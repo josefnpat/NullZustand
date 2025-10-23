@@ -53,6 +53,8 @@ public class ServerController : MonoBehaviour
     private SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
     private List<ServerInfo> _serverList = new List<ServerInfo>();
     private ServerInfo _currentServer;
+    private bool _isAuthenticated = false;
+    private Player _currentPlayer = null;
 
     public event Action<Player> OnPlayerUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
@@ -104,16 +106,15 @@ public class ServerController : MonoBehaviour
     private void InitializeHandlers()
     {
         _handlerRegistry = new ClientMessageHandlerRegistry();
-        // todo: sort alphabetically
         // Register message handlers - easily comment out any handler to disable it
-        _handlerRegistry.RegisterHandler(new RegisterMessageHandler());
-        _handlerRegistry.RegisterHandler(new LoginHandlerMessageHandler());
-        _handlerRegistry.RegisterHandler(new PingMessageHandler());
-        _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
-        _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
-        _handlerRegistry.RegisterHandler(new LocationUpdatesMessageHandler());
         _handlerRegistry.RegisterHandler(new ChatMessageHandler());
         _handlerRegistry.RegisterHandler(new ErrorMessageHandler());
+        _handlerRegistry.RegisterHandler(new LocationUpdatesMessageHandler());
+        _handlerRegistry.RegisterHandler(new LoginHandlerMessageHandler());
+        _handlerRegistry.RegisterHandler(new PingMessageHandler());
+        _handlerRegistry.RegisterHandler(new RegisterMessageHandler());
+        _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
+        _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
     }
 
     public void FetchServerList()
@@ -223,6 +224,8 @@ public class ServerController : MonoBehaviour
             return;
         }
 
+        _currentPlayer = new Player(username);
+
         var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
         if (handler != null)
             await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
@@ -293,6 +296,16 @@ public class ServerController : MonoBehaviour
     public bool IsConnected()
     {
         return _client != null && _client.Connected && _stream != null;
+    }
+
+    public bool IsAuthenticated()
+    {
+        return _isAuthenticated;
+    }
+
+    public Player GetCurrentPlayer()
+    {
+        return _currentPlayer;
     }
 
     private bool IsClientDisconnected()
@@ -448,6 +461,8 @@ public class ServerController : MonoBehaviour
             _stream = null;
             _client = null;
             _connectionTask = null;
+            _isAuthenticated = false;
+            _currentPlayer = null;
         }
     }
 
@@ -576,6 +591,7 @@ public class ServerController : MonoBehaviour
 
     public void InvokePlayerAuthenticate()
     {
+        _isAuthenticated = true;
         OnPlayerAuthenticate?.Invoke();
     }
 
@@ -668,6 +684,8 @@ public class ServerController : MonoBehaviour
             _serverClockOffset = 0;
             _lastTimeSyncTime = 0f;
             _lastConnectionError = null;
+            _isAuthenticated = false;
+            _currentPlayer = null;
             _responseCallbacks.CleanupExpiredCallbacks(0f);
 
             // Notify subscribers that session has disconnected

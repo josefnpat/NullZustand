@@ -23,7 +23,7 @@ namespace NullZustand
         private DateTime _lastCleanup = DateTime.UtcNow;
 
         // Rate limit settings
-        private const int MAX_REQUESTS_PER_WINDOW = 50; // 50 requests
+        private const int MAX_REQUESTS_PER_WINDOW = 100; // 50 requests
         private const int WINDOW_SECONDS = 10; // per 10 seconds
         private const int BAN_DURATION_SECONDS = 60; // 1 minute ban for violators
         private const int CLEANUP_INTERVAL_SECONDS = 300; // Clean up old data every 5 minutes

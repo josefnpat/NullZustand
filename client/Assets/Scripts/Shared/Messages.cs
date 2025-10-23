@@ -15,23 +15,22 @@ namespace NullZustand
 
     public static class MessageTypes
     {
-        // todo: Sort message types alphabetically
-        public const string PING = "Ping";
-        public const string PONG = "Pong";
-        public const string TIME_SYNC_REQUEST = "TimeSyncRequest";
-        public const string TIME_SYNC_RESPONSE = "TimeSyncResponse";
-        public const string REGISTER_REQUEST = "RegisterRequest";
-        public const string REGISTER_RESPONSE = "RegisterResponse";
-        public const string LOGIN_REQUEST = "LoginRequest";
-        public const string LOGIN_RESPONSE = "LoginResponse";
-        public const string UPDATE_POSITION_REQUEST = "UpdatePositionRequest";
-        public const string UPDATE_POSITION_RESPONSE = "UpdatePositionResponse";
-        public const string LOCATION_UPDATES_REQUEST = "LocationUpdatesRequest";
-        public const string LOCATION_UPDATES_RESPONSE = "LocationUpdatesResponse";
-        public const string LOCATION_UPDATES_BROADCAST = "LocationUpdatesBroadcast";
         public const string CHAT_MESSAGE_REQUEST = "ChatMessageRequest";
         public const string CHAT_MESSAGE_RESPONSE = "ChatMessageResponse";
         public const string ERROR = "Error";
+        public const string LOCATION_UPDATES_BROADCAST = "LocationUpdatesBroadcast";
+        public const string LOCATION_UPDATES_REQUEST = "LocationUpdatesRequest";
+        public const string LOCATION_UPDATES_RESPONSE = "LocationUpdatesResponse";
+        public const string LOGIN_REQUEST = "LoginRequest";
+        public const string LOGIN_RESPONSE = "LoginResponse";
+        public const string PING = "Ping";
+        public const string PONG = "Pong";
+        public const string REGISTER_REQUEST = "RegisterRequest";
+        public const string REGISTER_RESPONSE = "RegisterResponse";
+        public const string TIME_SYNC_REQUEST = "TimeSyncRequest";
+        public const string TIME_SYNC_RESPONSE = "TimeSyncResponse";
+        public const string UPDATE_POSITION_REQUEST = "UpdatePositionRequest";
+        public const string UPDATE_POSITION_RESPONSE = "UpdatePositionResponse";
     }
 
     public static class ServerConstants

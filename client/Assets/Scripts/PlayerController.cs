@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(TransformTweener))]
@@ -8,7 +7,11 @@ public class PlayerController : MonoBehaviour
     private TransformTweener _transformTweener;
 
     [SerializeField]
-    private TMP_Text _infoText;
+    private Camera _chaseCamera;
+    public Camera ChaseCamera { get { return _chaseCamera; } }
+    [SerializeField]
+    private Camera _firstPersonCamera;
+    public Camera FirstPersonCamera { get { return _firstPersonCamera; } }
 
     private PlayerState _lastServerState;
     private bool _hasReceivedUpdate = false;
@@ -41,8 +44,6 @@ public class PlayerController : MonoBehaviour
 
     public void SetPlayer(Player player)
     {
-        _infoText.text = player.Username;
-
         _lastServerState.Position = player.CurrentState.Position;
         _lastServerState.Rotation = player.CurrentState.Rotation;
         _lastServerState.Velocity = player.CurrentState.Velocity;

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-using NullZustand;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 public class PlayerManager : MonoBehaviour
 {
@@ -14,34 +13,102 @@ public class PlayerManager : MonoBehaviour
     [SerializeField]
     private TMP_Text _statusText;
     [SerializeField]
-    private TMP_InputField _xRotationInputField;
+    private TMP_Text _velocityText;
+
     [SerializeField]
-    private TMP_InputField _yRotationInputField;
+    private InputActionReference _pitchActionReference;
     [SerializeField]
-    private TMP_InputField _zRotationInputField;
+    private InputActionReference _yawActionReference;
     [SerializeField]
-    private TMP_InputField _wRotationInputField;
+    private InputActionReference _rollActionReference;
     [SerializeField]
-    private TMP_InputField _velocityInputField;
-    [SerializeField]
-    private Button _updateLocationButton;
-    [SerializeField]
-    private Button _getLocationUpdatesButton;
+    private InputActionReference _throttleActionReference;
 
     private Dictionary<string, PlayerController> _playerControllers = new Dictionary<string, PlayerController>();
     private ServerController _serverController;
     private StatusController _statusController;
 
-    public void Start()
+    // Track current rotation for incremental movement
+    private Quaternion _currentRotation = Quaternion.identity;
+
+    // Rate limiting for movement updates
+    private float _lastMovementUpdateTime = 0f;
+    private const float MOVEMENT_UPDATE_INTERVAL = 0.1f;
+    private Quaternion _lastSentRotation = Quaternion.identity;
+
+    // Throttle and velocity system
+    private float _currentVelocity = 0f;
+    private const float MAX_VELOCITY = 10f;
+    private const float MIN_VELOCITY = 0f;
+    private const float THROTTLE_ACCELERATION = 5f; // velocity units per second per throttle unit
+
+
+    void Start()
     {
         _serverController = ServiceLocator.Get<ServerController>();
         _statusController = ServiceLocator.Get<StatusController>();
         _serverController.OnPlayerUpdate += OnPlayerUpdate;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
-        _updateLocationButton.onClick.AddListener(OnUpdateLocationButtonPressed);
-        _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
 
         _statusController.ClearStatus();
+    }
+
+    void Update()
+    {
+        if (_serverController.IsConnected() && _serverController.IsAuthenticated())
+        {
+            float pitchInput = _pitchActionReference.action.ReadValue<float>();
+            float yawInput = _yawActionReference.action.ReadValue<float>();
+            float rollInput = _rollActionReference.action.ReadValue<float>();
+            float throttleInput = _throttleActionReference.action.ReadValue<float>();
+
+            bool hasInput = Mathf.Abs(pitchInput) > 0.1f ||
+                Mathf.Abs(yawInput) > 0.1f ||
+                Mathf.Abs(rollInput) > 0.1f ||
+                Mathf.Abs(throttleInput) > 0.1f;
+
+            bool throttleChanged = false;
+
+            if (hasInput)
+            {
+                float velocityChange = throttleInput * THROTTLE_ACCELERATION * Time.deltaTime;
+                if (velocityChange != 0)
+                {
+                    throttleChanged = true;
+                    _currentVelocity += velocityChange;
+                    _currentVelocity = Mathf.Clamp(_currentVelocity, MIN_VELOCITY, MAX_VELOCITY);
+                }
+
+                float pitchChange = pitchInput * Time.deltaTime * 90f; // degrees per second
+                float yawChange = yawInput * Time.deltaTime * 90f; // degrees per second
+                float rollChange = rollInput * Time.deltaTime * 90f; // degrees per second
+
+                Quaternion pitchRotation = Quaternion.AngleAxis(pitchChange, Vector3.right);
+                Quaternion yawRotation = Quaternion.AngleAxis(yawChange, Vector3.up);
+                Quaternion rollRotation = Quaternion.AngleAxis(rollChange, Vector3.forward);
+
+                _currentRotation = _currentRotation * yawRotation * pitchRotation * rollRotation;
+            }
+
+            bool rotationChanged = Quaternion.Angle(_currentRotation, _lastSentRotation) > 1f;
+
+            bool timeElapsed = Time.time - _lastMovementUpdateTime >= MOVEMENT_UPDATE_INTERVAL;
+
+            if ((rotationChanged || throttleChanged) && timeElapsed)
+            {
+                _lastMovementUpdateTime = Time.time;
+                _lastSentRotation = _currentRotation;
+                _serverController.UpdatePosition(_currentRotation, _currentVelocity, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+            }
+
+            UpdateVelocityVisual();
+        }
+    }
+
+    private void UpdateVelocityVisual()
+    {
+        int velocityPercent = Mathf.FloorToInt(_currentVelocity / MAX_VELOCITY * 100);
+        _velocityText.text = $"{_currentVelocity} u/s ({velocityPercent}%)";
     }
 
     private void OnPlayerUpdate(Player player)
@@ -54,57 +121,22 @@ public class PlayerManager : MonoBehaviour
         else
         {
             GameObject go = Instantiate(_playerPrefab);
+            go.name = $"Player({player.Username})";
             playerController = go.GetComponent<PlayerController>();
             _playerControllers.Add(player.Username, playerController);
         }
         playerController.SetPlayer(player);
-    }
 
-    public void OnUpdateLocationButtonPressed()
-    {
-        _statusController.ClearStatus();
+        // Sync the current rotation and velocity if this is the current player
+        Player currentPlayer = _serverController.GetCurrentPlayer();
+        bool isCurrentPlayer = currentPlayer != null && player.Username == currentPlayer.Username;
 
-        // Validate and parse rotation and velocity input fields
-        bool xValidRotation = float.TryParse(_xRotationInputField.text, out float xRot);
-        bool yValidRotation = float.TryParse(_yRotationInputField.text, out float yRot);
-        bool zValidRotation = float.TryParse(_zRotationInputField.text, out float zRot);
-        bool wValidRotation = float.TryParse(_wRotationInputField.text, out float wRot);
-        bool velocityValid = float.TryParse(_velocityInputField.text, out float velocity);
-
-        if (!xValidRotation || !yValidRotation || !zValidRotation || !wValidRotation)
+        if (isCurrentPlayer)
         {
-            _statusController.SetStatus("Invalid rotation. Please enter valid numbers for quaternion components.");
-            return;
+            _currentRotation = player.CurrentState.Rotation;
+            _lastSentRotation = _currentRotation; // Also update the last sent rotation to avoid duplicate sends
+            _currentVelocity = player.CurrentState.Velocity; // Sync velocity with server state
         }
-
-        if (!IsValidRotation(xRot) || !IsValidRotation(yRot) || !IsValidRotation(zRot) || !IsValidRotation(wRot))
-        {
-            _statusController.SetStatus("Invalid rotation. Quaternion components must be valid numbers.");
-            return;
-        }
-
-        if (!velocityValid)
-        {
-            _statusController.SetStatus("Invalid velocity. Please enter a valid number.");
-            return;
-        }
-
-        if (!IsValidVelocity(velocity))
-        {
-            _statusController.SetStatus("Invalid velocity. Velocity must be a valid number.");
-            return;
-        }
-
-        // Validate velocity is non-negative
-        if (velocity < 0)
-        {
-            _statusController.SetStatus("Velocity must be non-negative.");
-            return;
-        }
-
-        var rotation = new Quaternion(xRot, yRot, zRot, wRot);
-
-        _serverController.UpdatePosition(rotation, velocity, OnUpdatePositionSuccess, OnUpdatePositionFailure);
     }
 
     private void OnUpdatePositionSuccess(object payload)
@@ -125,55 +157,6 @@ public class PlayerManager : MonoBehaviour
     private void OnUpdatePositionFailure(string error)
     {
         _statusController.SetStatus($"Position update failed: {error}");
-    }
-
-    private bool IsValidRotation(float value)
-    {
-        return !float.IsNaN(value) && !float.IsInfinity(value);
-    }
-
-    private bool IsValidVelocity(float value)
-    {
-        return !float.IsNaN(value) && !float.IsInfinity(value);
-    }
-
-    private void OnGetLocationUpdatesButtonPressed()
-    {
-        _statusController.ClearStatus();
-        _serverController.GetLocationUpdates(OnGetLocationUpdatesSuccess, OnGetLocationUpdatesFailure);
-    }
-
-    private void OnGetLocationUpdatesSuccess(object payload)
-    {
-        try
-        {
-            JObject data = JObject.FromObject(payload);
-            long lastUpdateId = data["lastLocationUpdateId"]?.Value<long>() ?? 0;
-
-            int updateCount = 0;
-            if (data["updates"] is JArray updates)
-            {
-                updateCount = updates.Count;
-            }
-
-            if (updateCount > 0)
-            {
-                _statusController.SetStatus($"Received {updateCount} location update(s). Update ID: {lastUpdateId}");
-            }
-            else
-            {
-                _statusController.SetStatus("No new location updates.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"Failed to parse location updates success payload: {ex.Message}");
-        }
-    }
-
-    private void OnGetLocationUpdatesFailure(string error)
-    {
-        _statusController.SetStatus($"Location updates failed: {error}");
     }
 
     private void OnSessionDisconnect()
