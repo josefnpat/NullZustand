@@ -23,6 +23,8 @@ public class PlayerManager : MonoBehaviour
     private InputActionReference _rollActionReference;
     [SerializeField]
     private InputActionReference _throttleActionReference;
+    [SerializeField]
+    private InputActionReference _changeCameraActionReference;
 
     private Dictionary<string, PlayerController> _playerControllers = new Dictionary<string, PlayerController>();
     private ServerController _serverController;
@@ -101,6 +103,17 @@ public class PlayerManager : MonoBehaviour
                 _lastMovementUpdateTime = Time.time;
                 _lastSentRotation = _currentRotation;
                 _serverController.UpdatePosition(_currentRotation, _currentVelocity, OnUpdatePositionSuccess, OnUpdatePositionFailure);
+            }
+
+            // Handle camera cycling input
+            bool changeCameraPressed = _changeCameraActionReference.action.WasPressedThisFrame();
+            if (changeCameraPressed)
+            {
+                Player currentPlayer = _serverController.GetCurrentPlayer();
+                if (currentPlayer != null && _playerControllers.ContainsKey(currentPlayer.Username))
+                {
+                    _playerControllers[currentPlayer.Username].CycleCameraLocation();
+                }
             }
 
             UpdateVelocityVisual();

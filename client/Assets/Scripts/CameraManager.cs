@@ -59,7 +59,7 @@ public class CameraManager : MonoBehaviour
     {
         if (_playerControllers.ContainsKey(username))
         {
-            if (_currentPlayerCamera != null && _playerControllers[username].ChaseCamera == _currentPlayerCamera)
+            if (_currentPlayerCamera != null && _playerControllers[username].PlayerCamera == _currentPlayerCamera)
             {
                 SwitchToMainCamera();
             }
@@ -72,7 +72,7 @@ public class CameraManager : MonoBehaviour
         _mainCamera.enabled = true;
         foreach (var playerController in _playerControllers.Values)
         {
-            playerController.ChaseCamera.enabled = false;
+            playerController.PlayerCamera.enabled = false;
         }
         _currentPlayerCamera = null;
     }
@@ -91,12 +91,12 @@ public class CameraManager : MonoBehaviour
         {
             if (otherPlayerController != playerController)
             {
-                otherPlayerController.ChaseCamera.enabled = false;
+                otherPlayerController.PlayerCamera.enabled = false;
             }
         }
 
-        playerController.ChaseCamera.enabled = true;
-        _currentPlayerCamera = playerController.ChaseCamera;
+        playerController.PlayerCamera.enabled = true;
+        _currentPlayerCamera = playerController.PlayerCamera;
     }
 
     private void SetMainCameraActive()
@@ -104,7 +104,7 @@ public class CameraManager : MonoBehaviour
         _mainCamera.enabled = true;
         foreach (var playerController in _playerControllers.Values)
         {
-            playerController.ChaseCamera.enabled = false;
+            playerController.PlayerCamera.enabled = false;
         }
         _currentPlayerCamera = null;
     }

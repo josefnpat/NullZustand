@@ -5482,6 +5482,7 @@ MonoBehaviour:
   _yawActionReference: {fileID: -297680681986462533, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   _rollActionReference: {fileID: -7038816821174633220, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   _throttleActionReference: {fileID: -5776699860015695989, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  _changeCameraActionReference: {fileID: 8356482220806531371, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!1 &1648794379
 GameObject:
   m_ObjectHideFlags: 0
