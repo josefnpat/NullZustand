@@ -27,6 +27,7 @@ public class PlayerManager : MonoBehaviour
     private Dictionary<string, PlayerController> _playerControllers = new Dictionary<string, PlayerController>();
     private ServerController _serverController;
     private StatusController _statusController;
+    private CameraManager _cameraManager;
 
     // Track current rotation for incremental movement
     private Quaternion _currentRotation = Quaternion.identity;
@@ -47,6 +48,7 @@ public class PlayerManager : MonoBehaviour
     {
         _serverController = ServiceLocator.Get<ServerController>();
         _statusController = ServiceLocator.Get<StatusController>();
+        _cameraManager = ServiceLocator.Get<CameraManager>();
         _serverController.OnPlayerUpdate += OnPlayerUpdate;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
 
@@ -124,6 +126,7 @@ public class PlayerManager : MonoBehaviour
             go.name = $"Player({player.Username})";
             playerController = go.GetComponent<PlayerController>();
             _playerControllers.Add(player.Username, playerController);
+            _cameraManager.RegisterPlayerController(player.Username, playerController);
         }
         playerController.SetPlayer(player);
 
@@ -166,11 +169,17 @@ public class PlayerManager : MonoBehaviour
 
     public void ClearAllPlayers()
     {
-        foreach (var controller in _playerControllers.Values)
+        foreach (var kvp in _playerControllers)
         {
-            if (controller != null && controller.gameObject != null)
+            string username = kvp.Key;
+            PlayerController controller = kvp.Value;
+            if (controller != null)
             {
-                Destroy(controller.gameObject);
+                if (controller.gameObject != null)
+                {
+                    _cameraManager.UnregisterPlayerController(username);
+                    Destroy(controller.gameObject);
+                }
             }
         }
         _playerControllers.Clear();

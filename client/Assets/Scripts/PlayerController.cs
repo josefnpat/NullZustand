@@ -10,8 +10,6 @@ public class PlayerController : MonoBehaviour
     private Camera _chaseCamera;
     public Camera ChaseCamera { get { return _chaseCamera; } }
     [SerializeField]
-    private Camera _firstPersonCamera;
-    public Camera FirstPersonCamera { get { return _firstPersonCamera; } }
 
     private PlayerState _lastServerState;
     private bool _hasReceivedUpdate = false;
