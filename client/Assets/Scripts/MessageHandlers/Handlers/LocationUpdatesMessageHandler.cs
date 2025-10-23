@@ -99,9 +99,9 @@ namespace ClientMessageHandlers.Handlers
                 // Convert to Unity types
                 var position = new Vector3(x, y, z);
                 var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-
-                // Update player location
-                serverController.UpdatePlayerLocation(username, position, rotation, velocity, timestampMs);
+                var player = new Player(username);
+                player.CurrentState = new PlayerState(position, rotation, velocity, timestampMs);
+                serverController.TriggerPlayerUpdate(player);
             }
             catch (Exception ex)
             {

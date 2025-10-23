@@ -7,21 +7,13 @@ namespace NullZustand
     public class LocationUpdate
     {
         public long UpdateId { get; set; }
-        public string Username { get; set; }
-        public Vec3 Position { get; set; }
-        public Quat Rotation { get; set; }
-        public float Velocity { get; set; }
-        public long TimestampMs { get; set; }
+        public Player Player { get; set; }
         public DateTime Timestamp { get; set; }
 
-        public LocationUpdate(long updateId, string username, Vec3 position, Quat rotation, float velocity, long timestampMs)
+        public LocationUpdate(long updateId, Player player)
         {
             UpdateId = updateId;
-            Username = username;
-            Position = position;
-            Rotation = rotation;
-            Velocity = velocity;
-            TimestampMs = timestampMs;
+            Player = player ?? throw new ArgumentNullException(nameof(player));
             Timestamp = DateTime.UtcNow;
         }
     }
@@ -32,31 +24,18 @@ namespace NullZustand
         private long _minAvailableUpdateId = 1;
         private readonly object _lock = new object();
         private readonly List<LocationUpdate> _updates = new List<LocationUpdate>();
-        private readonly Dictionary<string, PlayerState> _currentStates = new Dictionary<string, PlayerState>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Player> _currentPlayers = new Dictionary<string, Player>(StringComparer.OrdinalIgnoreCase);
         private const int MAX_STORED_UPDATES = 1000;
 
-        public long RecordUpdate(string username, Vec3 position, Quat rotation, float velocity, long timestampMs)
+        public long RecordUpdate(Player player)
         {
             lock (_lock)
             {
                 long updateId = _nextUpdateId++;
-                var update = new LocationUpdate(updateId, username, position, rotation, velocity, timestampMs);
+                var update = new LocationUpdate(updateId, player);
                 _updates.Add(update);
 
-                // Update or create player state
-                if (!_currentStates.TryGetValue(username, out PlayerState state))
-                {
-                    state = new PlayerState(position, rotation, velocity, timestampMs);
-                    _currentStates[username] = state;
-                }
-                else
-                {
-                    // Update existing state
-                    state.Position = position;
-                    state.Rotation = rotation;
-                    state.Velocity = velocity;
-                    state.TimestampMs = timestampMs;
-                }
+                _currentPlayers[player.Username] = player;
 
                 if (_updates.Count > MAX_STORED_UPDATES)
                 {
@@ -101,20 +80,20 @@ namespace NullZustand
             }
         }
 
-        public PlayerState GetCurrentState(string username)
+        public Player GetCurrentPlayer(string username)
         {
             lock (_lock)
             {
-                _currentStates.TryGetValue(username, out PlayerState state);
-                return state;
+                _currentPlayers.TryGetValue(username, out Player player);
+                return player;
             }
         }
 
-        public Dictionary<string, PlayerState> GetAllCurrentStates()
+        public Dictionary<string, Player> GetAllCurrentPlayers()
         {
             lock (_lock)
             {
-                return new Dictionary<string, PlayerState>(_currentStates, StringComparer.OrdinalIgnoreCase);
+                return new Dictionary<string, Player>(_currentPlayers, StringComparer.OrdinalIgnoreCase);
             }
         }
 

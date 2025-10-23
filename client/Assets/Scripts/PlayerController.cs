@@ -1,9 +1,15 @@
+using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(TransformTweener))]
 public class PlayerController : MonoBehaviour
 {
+
     private TransformTweener _transformTweener;
+
+    [SerializeField]
+    private TMP_Text _infoText;
+
     private PlayerState _lastServerState;
     private bool _hasReceivedUpdate = false;
     private bool _isFirstUpdate = true;
@@ -33,32 +39,34 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void SetLocation(PlayerState state)
+    public void SetPlayer(Player player)
     {
-        _lastServerState.Position = state.Position;
-        _lastServerState.Rotation = state.Rotation;
-        _lastServerState.Velocity = state.Velocity;
-        _lastServerState.TimestampMs = state.TimestampMs;
+        _infoText.text = player.Username;
+
+        _lastServerState.Position = player.CurrentState.Position;
+        _lastServerState.Rotation = player.CurrentState.Rotation;
+        _lastServerState.Velocity = player.CurrentState.Velocity;
+        _lastServerState.TimestampMs = player.CurrentState.TimestampMs;
         _hasReceivedUpdate = true;
 
         long currentTimeMs = NullZustand.TimeUtils.GetUnixTimestampMs();
-        float elapsedSeconds = (currentTimeMs - state.TimestampMs) / 1000.0f;
+        float elapsedSeconds = (currentTimeMs - player.CurrentState.TimestampMs) / 1000.0f;
 
-        Vector3 currentPosition = state.Position;
-        if (state.Velocity != 0f && elapsedSeconds > 0)
+        Vector3 currentPosition = player.CurrentState.Position;
+        if (player.CurrentState.Velocity != 0f && elapsedSeconds > 0)
         {
-            Vector3 forward = state.Rotation * Vector3.forward;
-            currentPosition = state.Position + forward * state.Velocity * elapsedSeconds;
+            Vector3 forward = player.CurrentState.Rotation * Vector3.forward;
+            currentPosition = player.CurrentState.Position + forward * player.CurrentState.Velocity * elapsedSeconds;
         }
 
         if (_isFirstUpdate)
         {
-            _transformTweener.SetLocationImmediate(currentPosition, state.Rotation);
+            _transformTweener.SetLocationImmediate(currentPosition, player.CurrentState.Rotation);
             _isFirstUpdate = false;
         }
-        else if (state.Velocity == 0f)
+        else if (player.CurrentState.Velocity == 0f)
         {
-            _transformTweener.TweenToLocation(currentPosition, state.Rotation);
+            _transformTweener.TweenToLocation(currentPosition, player.CurrentState.Rotation);
         }
     }
 }

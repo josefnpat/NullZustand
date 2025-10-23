@@ -41,7 +41,6 @@ public class ServerController : MonoBehaviour
     private SslStream _stream;
     private X509Certificate2 _pinnedCertificate;
     private long _lastLocationUpdateId = 0;
-    private Dictionary<string, PlayerState> _playerStates = new Dictionary<string, PlayerState>();
     private long _serverClockOffset = 0;
     private ClientMessageHandlerRegistry _handlerRegistry;
     private ResponseCallbacks _responseCallbacks = new ResponseCallbacks();
@@ -55,7 +54,7 @@ public class ServerController : MonoBehaviour
     private List<ServerInfo> _serverList = new List<ServerInfo>();
     private ServerInfo _currentServer;
 
-    public event Action<string, PlayerState> OnLocationUpdate; // username, playerState
+    public event Action<Player> OnPlayerUpdate;
     public event Action<string, string> OnError; // (errorCode, errorMessage)
     public event Action OnSessionDisconnect;
     public event Action OnPlayerAuthenticate;
@@ -549,21 +548,6 @@ public class ServerController : MonoBehaviour
         return _lastLocationUpdateId;
     }
 
-    public void UpdatePlayerLocation(string username, Vector3 position, Quaternion rotation, float velocity, long timestampMs)
-    {
-        if (!_playerStates.TryGetValue(username, out PlayerState state))
-        {
-            state = new PlayerState();
-            _playerStates[username] = state;
-        }
-
-        state.Position = position;
-        state.Rotation = rotation;
-        state.Velocity = velocity;
-        state.TimestampMs = timestampMs;
-
-        OnLocationUpdate?.Invoke(username, state);
-    }
 
     public void RegisterResponseCallbacks(string messageId, Action<object> onSuccess, Action<string> onFailure)
     {
@@ -583,6 +567,11 @@ public class ServerController : MonoBehaviour
     public void InvokeError(string code, string message)
     {
         OnError?.Invoke(code, message);
+    }
+
+    public void TriggerPlayerUpdate(Player player)
+    {
+        OnPlayerUpdate?.Invoke(player);
     }
 
     public void InvokePlayerAuthenticate()
@@ -679,7 +668,6 @@ public class ServerController : MonoBehaviour
             _serverClockOffset = 0;
             _lastTimeSyncTime = 0f;
             _lastConnectionError = null;
-            _playerStates.Clear();
             _responseCallbacks.CleanupExpiredCallbacks(0f);
 
             // Notify subscribers that session has disconnected

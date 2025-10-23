@@ -45,16 +45,16 @@ namespace NullZustand.MessageHandlers.Handlers
                 var updatesList = updates.Select(u => new
                 {
                     updateId = u.UpdateId,
-                    username = u.Username,
-                    x = u.Position.X,
-                    y = u.Position.Y,
-                    z = u.Position.Z,
-                    rotX = u.Rotation.X,
-                    rotY = u.Rotation.Y,
-                    rotZ = u.Rotation.Z,
-                    rotW = u.Rotation.W,
-                    velocity = u.Velocity,
-                    timestampMs = u.TimestampMs,
+                    username = u.Player.Username,
+                    x = u.Player.CurrentState.Position.X,
+                    y = u.Player.CurrentState.Position.Y,
+                    z = u.Player.CurrentState.Position.Z,
+                    rotX = u.Player.CurrentState.Rotation.X,
+                    rotY = u.Player.CurrentState.Rotation.Y,
+                    rotZ = u.Player.CurrentState.Rotation.Z,
+                    rotW = u.Player.CurrentState.Rotation.W,
+                    velocity = u.Player.CurrentState.Velocity,
+                    timestampMs = u.Player.CurrentState.TimestampMs,
                     timestamp = u.Timestamp.ToString("o") // ISO 8601 format
                 }).ToList();
 

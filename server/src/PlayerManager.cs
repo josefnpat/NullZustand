@@ -8,8 +8,7 @@ namespace NullZustand
     public class LocationUpdateEvent : EventArgs
     {
         public long UpdateId { get; set; }
-        public string Username { get; set; }
-        public PlayerState State { get; set; }
+        public Player Player { get; set; }
     }
 
     public class PlayerManager
@@ -67,15 +66,14 @@ namespace NullZustand
                 player.CurrentState = new PlayerState(newPosition, rotation, velocity, serverTimestamp);
 
                 // Record to history tracker
-                long updateId = _locationUpdateTracker.RecordUpdate(username, newPosition, rotation, velocity, serverTimestamp);
+                long updateId = _locationUpdateTracker.RecordUpdate(player);
                 Console.WriteLine($"[PLAYER] Updated {username}: pos={newPosition}, rot={rotation}, vel={velocity:F2} [UpdateID: {updateId}]");
 
                 // Raise event for location update (observers can handle broadcasting)
                 OnLocationUpdated(new LocationUpdateEvent
                 {
                     UpdateId = updateId,
-                    Username = username,
-                    State = player.CurrentState
+                    Player = player
                 });
 
                 return updateId;

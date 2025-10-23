@@ -156,21 +156,21 @@ namespace NullZustand.MessageHandlers.Handlers
                         Payload = new
                         {
                             updateId = evt.UpdateId,
-                            username = evt.Username,
-                            x = evt.State.Position.X,
-                            y = evt.State.Position.Y,
-                            z = evt.State.Position.Z,
-                            rotX = evt.State.Rotation.X,
-                            rotY = evt.State.Rotation.Y,
-                            rotZ = evt.State.Rotation.Z,
-                            rotW = evt.State.Rotation.W,
-                            velocity = evt.State.Velocity,
-                            timestampMs = evt.State.TimestampMs
+                            username = evt.Player.Username,
+                            x = evt.Player.CurrentState.Position.X,
+                            y = evt.Player.CurrentState.Position.Y,
+                            z = evt.Player.CurrentState.Position.Z,
+                            rotX = evt.Player.CurrentState.Rotation.X,
+                            rotY = evt.Player.CurrentState.Rotation.Y,
+                            rotZ = evt.Player.CurrentState.Rotation.Z,
+                            rotW = evt.Player.CurrentState.Rotation.W,
+                            velocity = evt.Player.CurrentState.Velocity,
+                            timestampMs = evt.Player.CurrentState.TimestampMs
                         }
                     });
 
                     await MessageFraming.WriteMessageAsync(session.Stream, json);
-                    Console.WriteLine($"[BROADCAST] Sent location update for {evt.Username} to {session.SessionId} [UpdateID: {evt.UpdateId}]");
+                    Console.WriteLine($"[BROADCAST] Sent location update for {evt.Player.Username} to {session.SessionId} [UpdateID: {evt.UpdateId}]");
                 }
                 catch (Exception ex)
                 {

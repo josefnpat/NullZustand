@@ -36,7 +36,7 @@ public class PlayerManager : MonoBehaviour
     {
         _serverController = ServiceLocator.Get<ServerController>();
         _statusController = ServiceLocator.Get<StatusController>();
-        _serverController.OnLocationUpdate += OnLocationUpdate;
+        _serverController.OnPlayerUpdate += OnPlayerUpdate;
         _serverController.OnSessionDisconnect += OnSessionDisconnect;
         _updateLocationButton.onClick.AddListener(OnUpdateLocationButtonPressed);
         _getLocationUpdatesButton.onClick.AddListener(OnGetLocationUpdatesButtonPressed);
@@ -44,20 +44,20 @@ public class PlayerManager : MonoBehaviour
         _statusController.ClearStatus();
     }
 
-    private void OnLocationUpdate(string username, PlayerState state)
+    private void OnPlayerUpdate(Player player)
     {
         PlayerController playerController;
-        if (_playerControllers.ContainsKey(username))
+        if (_playerControllers.ContainsKey(player.Username))
         {
-            playerController = _playerControllers[username];
+            playerController = _playerControllers[player.Username];
         }
         else
         {
             GameObject go = Instantiate(_playerPrefab);
             playerController = go.GetComponent<PlayerController>();
-            _playerControllers.Add(username, playerController);
+            _playerControllers.Add(player.Username, playerController);
         }
-        playerController.SetLocation(state);
+        playerController.SetPlayer(player);
     }
 
     public void OnUpdateLocationButtonPressed()
@@ -197,7 +197,7 @@ public class PlayerManager : MonoBehaviour
     {
         if (_serverController != null)
         {
-            _serverController.OnLocationUpdate -= OnLocationUpdate;
+            _serverController.OnPlayerUpdate -= OnPlayerUpdate;
             _serverController.OnSessionDisconnect -= OnSessionDisconnect;
         }
         ClearAllPlayers();
