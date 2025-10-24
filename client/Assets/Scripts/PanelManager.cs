@@ -43,16 +43,28 @@ public class PanelManager : MonoBehaviour
         {
             _currentState = newState;
 
-            _sessionPanel.SetActive(false);
-            _playerPanel.SetActive(false);
+            if (_sessionPanel != null)
+            {
+                _sessionPanel.SetActive(false);
+            }
+            if (_playerPanel != null)
+            {
+                _playerPanel.SetActive(false);
+            }
 
             if (_currentState == PanelState.NotAuthenticated)
             {
-                _sessionPanel.SetActive(true);
+                if (_sessionPanel != null)
+                {
+                    _sessionPanel.SetActive(true);
+                }
             }
             else if (_currentState == PanelState.Authenticated)
             {
-                _playerPanel.SetActive(true);
+                if (_playerPanel != null)
+                {
+                    _playerPanel.SetActive(true);
+                }
             }
         }
     }
