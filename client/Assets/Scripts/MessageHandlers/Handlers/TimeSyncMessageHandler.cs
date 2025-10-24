@@ -28,14 +28,16 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
             {
                 Debug.LogWarning($"[{ResponseMessageType}] Received null or invalid payload");
                 if (message.Id != null)
-                    serverController.InvokeResponseFailure(message.Id, "Invalid payload");
+                {
+                    context.ServerController.InvokeResponseFailure(message.Id, "Invalid payload");
+                }
                 return;
             }
 
@@ -52,10 +54,10 @@ namespace ClientMessageHandlers.Handlers
             Debug.Log($"[TIME_SYNC] RTT: {roundTripTime}ms, Latency: {oneWayLatency}ms, Offset: {serverClockOffset}ms");
 
             // Update the server controller's clock offset
-            serverController.SetServerClockOffset(serverClockOffset);
+            context.ServerController.SetServerClockOffset(serverClockOffset);
 
             // Invoke success callback
-            serverController.InvokeResponseSuccess(message.Id, new
+            context.ServerController.InvokeResponseSuccess(message.Id, new
             {
                 roundTripTime = roundTripTime,
                 oneWayLatency = oneWayLatency,

@@ -27,6 +27,7 @@ namespace NullZustand
         public const string PONG = "Pong";
         public const string REGISTER_REQUEST = "RegisterRequest";
         public const string REGISTER_RESPONSE = "RegisterResponse";
+        public const string RESYNC_REQUIRED_RESPONSE = "ResyncRequiredResponse";
         public const string TIME_SYNC_REQUEST = "TimeSyncRequest";
         public const string TIME_SYNC_RESPONSE = "TimeSyncResponse";
         public const string UPDATE_POSITION_REQUEST = "UpdatePositionRequest";

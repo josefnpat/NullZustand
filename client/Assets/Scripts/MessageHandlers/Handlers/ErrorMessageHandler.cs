@@ -16,7 +16,7 @@ namespace ClientMessageHandlers.Handlers
             return System.Threading.Tasks.Task.FromResult<string>(null);
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
@@ -31,46 +31,9 @@ namespace ClientMessageHandlers.Handlers
             // Special handling for RESYNC_REQUIRED error
             if (code == "RESYNC_REQUIRED")
             {
-                Debug.LogWarning($"[ErrorHandler] Resync required - applying full location data");
-
-                // Update lastLocationUpdateId
-                if (payload["lastLocationUpdateId"] != null)
-                {
-                    long updateId = payload["lastLocationUpdateId"].Value<long>();
-                    serverController.SetLastLocationUpdateId(updateId);
-                }
-
-                // Load all player locations
-                if (payload["allPlayers"] != null)
-                {
-                    var allPlayers = payload["allPlayers"] as JArray;
-                    foreach (var player in allPlayers)
-                    {
-                        string username = player["username"].Value<string>();
-                        float x = player["x"]?.Value<float>() ?? 0f;
-                        float y = player["y"]?.Value<float>() ?? 0f;
-                        float z = player["z"]?.Value<float>() ?? 0f;
-                        float rotX = player["rotX"]?.Value<float>() ?? 0f;
-                        float rotY = player["rotY"]?.Value<float>() ?? 0f;
-                        float rotZ = player["rotZ"]?.Value<float>() ?? 0f;
-                        float rotW = player["rotW"]?.Value<float>() ?? 1f;
-                        float velocity = player["velocity"]?.Value<float>() ?? 0f;
-                        long timestampMs = player["timestampMs"]?.Value<long>() ?? 0L;
-
-                        var position = new Vector3(x, y, z);
-                        var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                        var playerObj = new Player(username);
-                        playerObj.CurrentState = new PlayerState(position, rotation, velocity, timestampMs);
-                        serverController.TriggerPlayerUpdate(playerObj);
-                    }
-                }
-
-                // Invoke success callback since resync was successful
-                if (!string.IsNullOrEmpty(message.Id))
-                {
-                    serverController.InvokeResponseSuccess(message.Id, payload);
-                }
-
+                // Delegate to ResyncRequiredMessageHandler
+                var resyncHandler = new ResyncRequiredMessageHandler();
+                resyncHandler.HandleResponse(message, context);
                 return;
             }
 
@@ -80,18 +43,18 @@ namespace ClientMessageHandlers.Handlers
                 Debug.LogWarning($"[ErrorHandler] Logged in from another location - disconnecting");
                 // The connection will be closed by the server
                 // Just notify the user through the error event
-                serverController.InvokeError(code, errorMessage);
+                context.ServerController.InvokeError(code, errorMessage);
                 return;
             }
 
             // Standard error handling for other error codes
             // Invoke the OnError event for global error handling
-            serverController.InvokeError(code, errorMessage);
+            context.ServerController.InvokeError(code, errorMessage);
 
             // If this error is in response to a specific message, invoke the failure callback
             if (!string.IsNullOrEmpty(message.Id))
             {
-                serverController.InvokeResponseFailure(message.Id, errorMessage);
+                context.ServerController.InvokeResponseFailure(message.Id, errorMessage);
             }
         }
     }

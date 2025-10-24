@@ -25,13 +25,13 @@ namespace ClientMessageHandlers
                 _handlersByResponse[handler.BroadcastMessageType] = handler;
         }
 
-        public bool ProcessMessage(Message message, ServerController serverController)
+        public bool ProcessMessage(Message message, MessageHandlerContext context)
         {
             if (_handlersByResponse.TryGetValue(message.Type, out IClientMessageHandler handler))
             {
                 try
                 {
-                    handler.HandleResponse(message, serverController);
+                    handler.HandleResponse(message, context);
                     return true;
                 }
                 catch (Exception ex)

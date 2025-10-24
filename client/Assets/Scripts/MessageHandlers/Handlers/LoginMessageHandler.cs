@@ -26,14 +26,16 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
             {
                 Debug.LogWarning($"[{ResponseMessageType}] Received null or invalid payload");
                 if (message.Id != null)
-                    serverController.InvokeResponseFailure(message.Id, "Invalid payload");
+                {
+                    context.ServerController.InvokeResponseFailure(message.Id, "Invalid payload");
+                }
                 return;
             }
 
@@ -44,7 +46,7 @@ namespace ClientMessageHandlers.Handlers
                 if (payload["lastLocationUpdateId"] != null)
                 {
                     long updateId = payload["lastLocationUpdateId"].Value<long>();
-                    serverController.SetLastLocationUpdateId(updateId);
+                    context.ServerController.SetLastLocationUpdateId(updateId);
                 }
 
                 // Load all player locations
@@ -54,6 +56,7 @@ namespace ClientMessageHandlers.Handlers
                     foreach (var player in allPlayers)
                     {
                         string username = player["username"].Value<string>();
+
                         float x = player["x"]?.Value<float>() ?? 0f;
                         float y = player["y"]?.Value<float>() ?? 0f;
                         float z = player["z"]?.Value<float>() ?? 0f;
@@ -67,19 +70,26 @@ namespace ClientMessageHandlers.Handlers
                         var position = new Vector3(x, y, z);
                         var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
                         var playerObj = new Player(username);
-                        playerObj.CurrentState = new PlayerState(position, rotation, velocity, timestampMs);
-                        serverController.TriggerPlayerUpdate(playerObj);
+
+                        long entityId = player["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
+                        if (entityId != EntityManager.INVALID_ENTITY_ID)
+                        {
+                            playerObj.EntityId = entityId;
+                            context.EntityManager.CreateEntity(entityId, position, rotation, velocity, timestampMs);
+                        }
+
+                        context.ServerController.TriggerPlayerUpdate(playerObj);
                     }
                 }
 
-                serverController.InvokePlayerAuthenticate();
+                context.ServerController.InvokePlayerAuthenticate();
 
-                serverController.InvokeResponseSuccess(message.Id, payload);
+                context.ServerController.InvokeResponseSuccess(message.Id, payload);
             }
             else
             {
                 string error = payload["error"]?.Value<string>() ?? "Unknown error";
-                serverController.InvokeResponseFailure(message.Id, error);
+                context.ServerController.InvokeResponseFailure(message.Id, error);
             }
         }
     }

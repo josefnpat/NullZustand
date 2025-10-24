@@ -9,7 +9,7 @@ namespace ClientMessageHandlers
         string RequestMessageType { get; }
         string ResponseMessageType { get; }
         string BroadcastMessageType { get; }
-        void HandleResponse(Message message, ServerController serverController);
+        void HandleResponse(Message message, MessageHandlerContext context);
     }
 
     public interface IClientMessageHandlerNoParam : IClientMessageHandler
@@ -31,7 +31,6 @@ namespace ClientMessageHandlers
     {
         Task<string> SendRequestAsync(ServerController serverController, T1 data1, T2 data2, T3 data3, T4 data4, Action<object> onSuccess = null, Action<string> onFailure = null);
     }
-
 
 }
 

@@ -11,7 +11,7 @@ namespace ClientMessageHandlers
         public abstract string ResponseMessageType { get; }
         public virtual string BroadcastMessageType => null;
 
-        public abstract void HandleResponse(Message message, ServerController serverController);
+        public abstract void HandleResponse(Message message, MessageHandlerContext context);
 
         protected string GenerateMessageId()
         {

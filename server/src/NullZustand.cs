@@ -90,6 +90,7 @@ namespace NullZustand
         private MessageHandlerRegistry _handlerRegistry;
         private SessionManager _sessionManager;
         private UserAccountManager _accountManager;
+        private EntityManager _entityManager;
         private PlayerManager _playerManager;
         private ChatManager _chatManager;
         private X509Certificate2 _serverCertificate;
@@ -102,7 +103,8 @@ namespace NullZustand
                 LoadCertificate();
 
                 // Initialize managers and message handlers
-                _playerManager = new PlayerManager();
+                _entityManager = new EntityManager();
+                _playerManager = new PlayerManager(_entityManager);
                 _sessionManager = new SessionManager(_playerManager);
                 _accountManager = new UserAccountManager();
                 _chatManager = new ChatManager();
@@ -153,8 +155,8 @@ namespace NullZustand
             _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
             _handlerRegistry.RegisterHandler(new RegisterRequestMessageHandler(_accountManager));
             _handlerRegistry.RegisterHandler(new LoginRequestMessageHandler(_sessionManager, _accountManager, _playerManager));
-            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager, _sessionManager));
-            _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager));
+            _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager, _sessionManager, _entityManager));
+            _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager, _entityManager));
             _handlerRegistry.RegisterHandler(new ChatMessageHandler(_chatManager, _sessionManager));
         }
 

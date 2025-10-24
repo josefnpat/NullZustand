@@ -7,6 +7,8 @@ public class PlayerController : MonoBehaviour
 
     private TransformTweener _transformTweener;
 
+    private EntityManager _entityManager;
+
     [SerializeField]
     private Camera _playerCamera;
     public Camera PlayerCamera { get { return _playerCamera; } }
@@ -18,17 +20,24 @@ public class PlayerController : MonoBehaviour
 
     private int _currentCameraLocationIndex = 0;
 
-    private PlayerState _lastServerState;
+    private Entity _lastServerState;
     private bool _hasReceivedUpdate = false;
     private bool _isFirstUpdate = true;
 
     void Awake()
     {
         _transformTweener = GetComponent<TransformTweener>();
-        _lastServerState = new PlayerState();
+        _lastServerState = new Entity();
     }
 
-    void Start()
+    public void Setup()
+    {
+        // Manually initialize PlayerController before SetPlayer() to avoid null reference exceptions
+        // Unity's Start() lifecycle hasn't run yet, so _entityManager would be null
+        _entityManager = ServiceLocator.Get<EntityManager>();
+    }
+
+    public void Start()
     {
         Transform firstLocation = _cameraLocations[0];
         _playerCameraTransformTweener.SetLocationImmediate(firstLocation.position, firstLocation.rotation);
@@ -55,30 +64,37 @@ public class PlayerController : MonoBehaviour
 
     public void SetPlayer(Player player)
     {
-        _lastServerState.Position = player.CurrentState.Position;
-        _lastServerState.Rotation = player.CurrentState.Rotation;
-        _lastServerState.Velocity = player.CurrentState.Velocity;
-        _lastServerState.TimestampMs = player.CurrentState.TimestampMs;
+        var entity = _entityManager.GetEntity(player.EntityId);
+        if (entity == null)
+        {
+            Debug.LogWarning($"[PlayerController] Entity {player.EntityId} not found for player {player.Username}");
+            return;
+        }
+
+        _lastServerState.Position = entity.Position;
+        _lastServerState.Rotation = entity.Rotation;
+        _lastServerState.Velocity = entity.Velocity;
+        _lastServerState.TimestampMs = entity.TimestampMs;
         _hasReceivedUpdate = true;
 
         long currentTimeMs = NullZustand.TimeUtils.GetUnixTimestampMs();
-        float elapsedSeconds = (currentTimeMs - player.CurrentState.TimestampMs) / 1000.0f;
+        float elapsedSeconds = (currentTimeMs - entity.TimestampMs) / 1000.0f;
 
-        Vector3 currentPosition = player.CurrentState.Position;
-        if (player.CurrentState.Velocity != 0f && elapsedSeconds > 0)
+        Vector3 currentPosition = entity.Position;
+        if (entity.Velocity != 0f && elapsedSeconds > 0)
         {
-            Vector3 forward = player.CurrentState.Rotation * Vector3.forward;
-            currentPosition = player.CurrentState.Position + forward * player.CurrentState.Velocity * elapsedSeconds;
+            Vector3 forward = entity.Rotation * Vector3.forward;
+            currentPosition = entity.Position + forward * entity.Velocity * elapsedSeconds;
         }
 
         if (_isFirstUpdate)
         {
-            _transformTweener.SetLocationImmediate(currentPosition, player.CurrentState.Rotation);
+            _transformTweener.SetLocationImmediate(currentPosition, entity.Rotation);
             _isFirstUpdate = false;
         }
-        else if (player.CurrentState.Velocity == 0f)
+        else if (entity.Velocity == 0f)
         {
-            _transformTweener.TweenToLocation(currentPosition, player.CurrentState.Rotation);
+            _transformTweener.TweenToLocation(currentPosition, entity.Rotation);
         }
     }
 

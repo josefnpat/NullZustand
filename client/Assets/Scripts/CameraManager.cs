@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class CameraManager : MonoBehaviour
 {
     private Camera _mainCamera;
-    
+
     private Camera _currentPlayerCamera;
     private Dictionary<string, PlayerController> _playerControllers = new Dictionary<string, PlayerController>();
     private ServerController _serverController;
@@ -69,10 +69,16 @@ public class CameraManager : MonoBehaviour
 
     public void SwitchToMainCamera()
     {
-        _mainCamera.enabled = true;
+        if (_mainCamera != null)
+        {
+            _mainCamera.enabled = true;
+        }
         foreach (var playerController in _playerControllers.Values)
         {
-            playerController.PlayerCamera.enabled = false;
+            if (playerController != null && playerController.PlayerCamera != null)
+            {
+                playerController.PlayerCamera.enabled = false;
+            }
         }
         _currentPlayerCamera = null;
     }
@@ -85,26 +91,38 @@ public class CameraManager : MonoBehaviour
             return;
         }
 
-        _mainCamera.enabled = false;
+        if (_mainCamera != null)
+        {
+            _mainCamera.enabled = false;
+        }
 
         foreach (var otherPlayerController in _playerControllers.Values)
         {
-            if (otherPlayerController != playerController)
+            if (otherPlayerController != playerController && otherPlayerController != null && otherPlayerController.PlayerCamera != null)
             {
                 otherPlayerController.PlayerCamera.enabled = false;
             }
         }
 
-        playerController.PlayerCamera.enabled = true;
+        if (playerController.PlayerCamera != null)
+        {
+            playerController.PlayerCamera.enabled = true;
+        }
         _currentPlayerCamera = playerController.PlayerCamera;
     }
 
     private void SetMainCameraActive()
     {
-        _mainCamera.enabled = true;
+        if (_mainCamera != null)
+        {
+            _mainCamera.enabled = true;
+        }
         foreach (var playerController in _playerControllers.Values)
         {
-            playerController.PlayerCamera.enabled = false;
+            if (playerController != null && playerController.PlayerCamera != null)
+            {
+                playerController.PlayerCamera.enabled = false;
+            }
         }
         _currentPlayerCamera = null;
     }

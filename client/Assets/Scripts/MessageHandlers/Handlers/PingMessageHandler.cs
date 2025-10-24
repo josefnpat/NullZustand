@@ -24,10 +24,10 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             var payload = GetPayloadAsJObject(message);
-            serverController.InvokeResponseSuccess(message.Id, payload);
+            context.ServerController.InvokeResponseSuccess(message.Id, payload);
         }
     }
 }

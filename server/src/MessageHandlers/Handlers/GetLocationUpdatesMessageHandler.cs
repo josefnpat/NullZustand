@@ -12,10 +12,12 @@ namespace NullZustand.MessageHandlers.Handlers
     public class GetLocationUpdatesMessageHandler : MessageHandler
     {
         private readonly PlayerManager _playerManager;
+        private readonly EntityManager _entityManager;
 
-        public GetLocationUpdatesMessageHandler(PlayerManager playerManager)
+        public GetLocationUpdatesMessageHandler(PlayerManager playerManager, EntityManager entityManager)
         {
             _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
+            _entityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
         }
 
         public override string MessageType => MessageTypes.LOCATION_UPDATES_REQUEST;
@@ -42,20 +44,24 @@ namespace NullZustand.MessageHandlers.Handlers
                 long currentUpdateId = _playerManager.GetCurrentUpdateId();
 
                 // Convert to a simple format for the response
-                var updatesList = updates.Select(u => new
+                var updatesList = updates.Select(u =>
                 {
-                    updateId = u.UpdateId,
-                    username = u.Player.Username,
-                    x = u.Player.CurrentState.Position.X,
-                    y = u.Player.CurrentState.Position.Y,
-                    z = u.Player.CurrentState.Position.Z,
-                    rotX = u.Player.CurrentState.Rotation.X,
-                    rotY = u.Player.CurrentState.Rotation.Y,
-                    rotZ = u.Player.CurrentState.Rotation.Z,
-                    rotW = u.Player.CurrentState.Rotation.W,
-                    velocity = u.Player.CurrentState.Velocity,
-                    timestampMs = u.Player.CurrentState.TimestampMs,
-                    timestamp = u.Timestamp.ToString("o") // ISO 8601 format
+                    var entity = _entityManager.GetEntity(u.Player.EntityId);
+                    return new
+                    {
+                        updateId = u.UpdateId,
+                        username = u.Player.Username,
+                        x = entity?.Position.X ?? 0f,
+                        y = entity?.Position.Y ?? 0f,
+                        z = entity?.Position.Z ?? 0f,
+                        rotX = entity?.Rotation.X ?? 0f,
+                        rotY = entity?.Rotation.Y ?? 0f,
+                        rotZ = entity?.Rotation.Z ?? 0f,
+                        rotW = entity?.Rotation.W ?? 1f,
+                        velocity = entity?.Velocity ?? 0f,
+                        timestampMs = entity?.TimestampMs ?? 0L,
+                        timestamp = u.Timestamp.ToString("o") // ISO 8601 format
+                    };
                 }).ToList();
 
                 Console.WriteLine($"[LOCATION_UPDATES] Sending {updatesList.Count} updates to {session.Username} (current ID: {currentUpdateId})");

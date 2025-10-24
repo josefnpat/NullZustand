@@ -1,13 +1,13 @@
 using UnityEngine;
 
-public class PlayerState
+public class Entity
 {
     public Vector3 Position { get; set; }
     public Quaternion Rotation { get; set; }
     public float Velocity { get; set; }
     public long TimestampMs { get; set; }
 
-    public PlayerState()
+    public Entity()
     {
         Position = Vector3.zero;
         Rotation = Quaternion.identity;
@@ -15,7 +15,7 @@ public class PlayerState
         TimestampMs = 0L;
     }
 
-    public PlayerState(Vector3 position, Quaternion rotation, float velocity, long timestampMs)
+    public Entity(Vector3 position, Quaternion rotation, float velocity, long timestampMs)
     {
         Position = position;
         Rotation = rotation;
@@ -23,4 +23,3 @@ public class PlayerState
         TimestampMs = timestampMs;
     }
 }
-

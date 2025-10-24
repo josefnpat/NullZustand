@@ -17,11 +17,13 @@ namespace NullZustand.MessageHandlers.Handlers
     {
         private readonly PlayerManager _playerManager;
         private readonly SessionManager _sessionManager;
+        private readonly EntityManager _entityManager;
 
-        public UpdatePositionMessageHandler(PlayerManager playerManager, SessionManager sessionManager)
+        public UpdatePositionMessageHandler(PlayerManager playerManager, SessionManager sessionManager, EntityManager entityManager)
         {
             _playerManager = playerManager ?? throw new ArgumentNullException(nameof(playerManager));
             _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+            _entityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
 
             // Subscribe to location updates for broadcasting (similar to ChatMessageHandler pattern)
             _playerManager.LocationUpdated += OnLocationUpdated;
@@ -157,15 +159,16 @@ namespace NullZustand.MessageHandlers.Handlers
                         {
                             updateId = evt.UpdateId,
                             username = evt.Player.Username,
-                            x = evt.Player.CurrentState.Position.X,
-                            y = evt.Player.CurrentState.Position.Y,
-                            z = evt.Player.CurrentState.Position.Z,
-                            rotX = evt.Player.CurrentState.Rotation.X,
-                            rotY = evt.Player.CurrentState.Rotation.Y,
-                            rotZ = evt.Player.CurrentState.Rotation.Z,
-                            rotW = evt.Player.CurrentState.Rotation.W,
-                            velocity = evt.Player.CurrentState.Velocity,
-                            timestampMs = evt.Player.CurrentState.TimestampMs
+                            entityId = evt.Player.EntityId,
+                            x = _entityManager.GetEntity(evt.Player.EntityId)?.Position.X ?? 0f,
+                            y = _entityManager.GetEntity(evt.Player.EntityId)?.Position.Y ?? 0f,
+                            z = _entityManager.GetEntity(evt.Player.EntityId)?.Position.Z ?? 0f,
+                            rotX = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.X ?? 0f,
+                            rotY = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.Y ?? 0f,
+                            rotZ = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.Z ?? 0f,
+                            rotW = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.W ?? 1f,
+                            velocity = _entityManager.GetEntity(evt.Player.EntityId)?.Velocity ?? 0f,
+                            timestampMs = _entityManager.GetEntity(evt.Player.EntityId)?.TimestampMs ?? 0L
                         }
                     });
 

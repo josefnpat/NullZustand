@@ -28,30 +28,28 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
             {
                 Debug.LogWarning($"[{message.Type}] Received null or invalid payload");
                 if (message.Id != null)
-                    serverController.InvokeResponseFailure(message.Id, "Invalid payload");
+                    context.ServerController.InvokeResponseFailure(message.Id, "Invalid payload");
                 return;
             }
 
             if (message.Type == MessageTypes.LOCATION_UPDATES_BROADCAST)
             {
-                ProcessSingleUpdate(payload, serverController);
-                return;
+                ProcessSingleUpdate(payload, context);
             }
-
-            if (message.Type == MessageTypes.LOCATION_UPDATES_RESPONSE)
+            else if (message.Type == MessageTypes.LOCATION_UPDATES_RESPONSE)
             {
                 // Update lastLocationUpdateId
                 if (payload["lastLocationUpdateId"] != null)
                 {
                     long updateId = payload["lastLocationUpdateId"].Value<long>();
-                    serverController.SetLastLocationUpdateId(updateId);
+                    context.ServerController.SetLastLocationUpdateId(updateId);
                 }
 
                 // Apply incremental updates
@@ -60,15 +58,15 @@ namespace ClientMessageHandlers.Handlers
                     var updates = payload["updates"] as JArray;
                     foreach (var update in updates)
                     {
-                        ProcessSingleUpdate(update, serverController);
+                        ProcessSingleUpdate(update, context);
                     }
                 }
 
-                serverController.InvokeResponseSuccess(message.Id, payload);
+                context.ServerController.InvokeResponseSuccess(message.Id, payload);
             }
         }
 
-        private void ProcessSingleUpdate(JToken update, ServerController serverController)
+        private void ProcessSingleUpdate(JToken update, MessageHandlerContext context)
         {
             try
             {
@@ -91,17 +89,24 @@ namespace ClientMessageHandlers.Handlers
                 long timestampMs = update["timestampMs"]?.Value<long>() ?? 0L;
 
                 // Update the last location update ID (for sync purposes)
-                if (updateId > serverController.GetLastLocationUpdateId())
+                if (updateId > context.ServerController.GetLastLocationUpdateId())
                 {
-                    serverController.SetLastLocationUpdateId(updateId);
+                    context.ServerController.SetLastLocationUpdateId(updateId);
                 }
 
                 // Convert to Unity types
                 var position = new Vector3(x, y, z);
                 var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
                 var player = new Player(username);
-                player.CurrentState = new PlayerState(position, rotation, velocity, timestampMs);
-                serverController.TriggerPlayerUpdate(player);
+
+                long entityId = update["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
+                if (entityId != EntityManager.INVALID_ENTITY_ID)
+                {
+                    player.EntityId = entityId;
+                    context.EntityManager.CreateEntity(entityId, position, rotation, velocity, timestampMs);
+                }
+
+                context.ServerController.TriggerPlayerUpdate(player);
             }
             catch (Exception ex)
             {

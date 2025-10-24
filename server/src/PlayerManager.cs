@@ -15,14 +15,16 @@ namespace NullZustand
     {
         private readonly ConcurrentDictionary<string, Player> _players;
         private readonly LocationUpdateTracker _locationUpdateTracker;
+        private readonly EntityManager _entityManager;
 
         // Event for location updates - allows observers to react without circular dependency
         public event EventHandler<LocationUpdateEvent> LocationUpdated;
 
-        public PlayerManager()
+        public PlayerManager(EntityManager entityManager)
         {
             _players = new ConcurrentDictionary<string, Player>(StringComparer.OrdinalIgnoreCase);
             _locationUpdateTracker = new LocationUpdateTracker();
+            _entityManager = entityManager ?? throw new ArgumentNullException(nameof(entityManager));
         }
 
         public Player GetOrCreatePlayer(string username)
@@ -30,6 +32,7 @@ namespace NullZustand
             return _players.GetOrAdd(username, name =>
             {
                 var player = new Player(name);
+                player.EntityId = _entityManager.CreateEntity();
                 Console.WriteLine($"[PLAYER] Created new player: {player} [Total: {_players.Count}]");
                 return player;
             });
@@ -43,9 +46,9 @@ namespace NullZustand
                 player.UpdateLastSeen();
 
                 Vec3 newPosition;
-                PlayerState oldState = player.CurrentState;
+                Entity oldState = _entityManager.GetEntity(player.EntityId);
 
-                if (oldState.TimestampMs > 0)
+                if (oldState != null && oldState.TimestampMs > 0)
                 {
                     // Calculate time elapsed since last update (in seconds)
                     float timeDelta = (serverTimestamp - oldState.TimestampMs) / 1000.0f;
@@ -62,8 +65,8 @@ namespace NullZustand
                     Console.WriteLine($"[PLAYER] {username} initialized at origin");
                 }
 
-                // Update player's current state
-                player.CurrentState = new PlayerState(newPosition, rotation, velocity, serverTimestamp);
+                // Update entity in EntityManager
+                _entityManager.UpdateEntity(player.EntityId, newPosition, rotation, velocity, serverTimestamp);
 
                 // Record to history tracker
                 long updateId = _locationUpdateTracker.RecordUpdate(player);
@@ -91,10 +94,28 @@ namespace NullZustand
         {
             return _players.Values.Select(player =>
             {
-                var state = player.CurrentState;
+                var state = _entityManager.GetEntity(player.EntityId);
+                if (state == null)
+                {
+                    return new
+                    {
+                        username = player.Username,
+                        entityId = player.EntityId,
+                        x = 0f,
+                        y = 0f,
+                        z = 0f,
+                        rotX = 0f,
+                        rotY = 0f,
+                        rotZ = 0f,
+                        rotW = 1f,
+                        velocity = 0f,
+                        timestampMs = 0L
+                    };
+                }
                 return new
                 {
                     username = player.Username,
+                    entityId = player.EntityId,
                     x = state.Position.X,
                     y = state.Position.Y,
                     z = state.Position.Z,

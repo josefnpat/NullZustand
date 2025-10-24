@@ -26,26 +26,28 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
             {
                 Debug.LogWarning($"[{ResponseMessageType}] Received null or invalid payload");
                 if (message.Id != null)
-                    serverController.InvokeResponseFailure(message.Id, "Invalid payload");
+                {
+                    context.ServerController.InvokeResponseFailure(message.Id, "Invalid payload");
+                }
                 return;
             }
 
             bool success = payload["success"]?.Value<bool>() ?? false;
             if (success)
             {
-                serverController.InvokeResponseSuccess(message.Id, payload);
+                context.ServerController.InvokeResponseSuccess(message.Id, payload);
             }
             else
             {
                 string error = payload["error"]?.Value<string>() ?? "Unknown error";
-                serverController.InvokeResponseFailure(message.Id, error);
+                context.ServerController.InvokeResponseFailure(message.Id, error);
             }
         }
     }

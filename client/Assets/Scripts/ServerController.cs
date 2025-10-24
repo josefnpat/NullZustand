@@ -113,6 +113,7 @@ public class ServerController : MonoBehaviour
         _handlerRegistry.RegisterHandler(new LoginHandlerMessageHandler());
         _handlerRegistry.RegisterHandler(new PingMessageHandler());
         _handlerRegistry.RegisterHandler(new RegisterMessageHandler());
+        _handlerRegistry.RegisterHandler(new ResyncRequiredMessageHandler());
         _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
         _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler());
     }
@@ -545,7 +546,10 @@ public class ServerController : MonoBehaviour
     {
         Debug.Log($"Received: {message.Type} | Payload: {JsonConvert.SerializeObject(message.Payload)}");
 
-        bool handled = _handlerRegistry.ProcessMessage(message, this);
+        var entityManager = ServiceLocator.Get<EntityManager>();
+        var playerManager = ServiceLocator.Get<PlayerManager>();
+        var context = new MessageHandlerContext(this, entityManager, playerManager);
+        bool handled = _handlerRegistry.ProcessMessage(message, context);
         if (!handled)
         {
             Debug.LogWarning($"[CLIENT] No handler for message type: {message.Type}");

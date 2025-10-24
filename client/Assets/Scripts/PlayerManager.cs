@@ -28,6 +28,7 @@ public class PlayerManager : MonoBehaviour
 
     private Dictionary<string, PlayerController> _playerControllers = new Dictionary<string, PlayerController>();
     private ServerController _serverController;
+    private EntityManager _entityManager;
     private StatusController _statusController;
     private CameraManager _cameraManager;
 
@@ -45,10 +46,15 @@ public class PlayerManager : MonoBehaviour
     private const float MIN_VELOCITY = 0f;
     private const float THROTTLE_ACCELERATION = 5f; // velocity units per second per throttle unit
 
+    void Awake()
+    {
+        ServiceLocator.Register<PlayerManager>(this);
+    }
 
     void Start()
     {
         _serverController = ServiceLocator.Get<ServerController>();
+        _entityManager = ServiceLocator.Get<EntityManager>();
         _statusController = ServiceLocator.Get<StatusController>();
         _cameraManager = ServiceLocator.Get<CameraManager>();
         _serverController.OnPlayerUpdate += OnPlayerUpdate;
@@ -138,6 +144,7 @@ public class PlayerManager : MonoBehaviour
             GameObject go = Instantiate(_playerPrefab);
             go.name = $"Player({player.Username})";
             playerController = go.GetComponent<PlayerController>();
+            playerController.Setup();
             _playerControllers.Add(player.Username, playerController);
             _cameraManager.RegisterPlayerController(player.Username, playerController);
         }
@@ -149,9 +156,18 @@ public class PlayerManager : MonoBehaviour
 
         if (isCurrentPlayer)
         {
-            _currentRotation = player.CurrentState.Rotation;
-            _lastSentRotation = _currentRotation; // Also update the last sent rotation to avoid duplicate sends
-            _currentVelocity = player.CurrentState.Velocity; // Sync velocity with server state
+
+            var entity = _entityManager.GetEntity(player.EntityId);
+            if (entity != null)
+            {
+                _currentRotation = entity.Rotation;
+                _lastSentRotation = _currentRotation; // Also update the last sent rotation to avoid duplicate sends
+                _currentVelocity = entity.Velocity; // Sync velocity with server state
+            }
+            else
+            {
+                Debug.LogWarning($"[PlayerManager] Entity {player.EntityId} not found for current player {player.Username}");
+            }
         }
     }
 

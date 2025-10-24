@@ -29,7 +29,7 @@ namespace ClientMessageHandlers.Handlers
             return messageId;
         }
 
-        public override void HandleResponse(Message message, ServerController serverController)
+        public override void HandleResponse(Message message, MessageHandlerContext context)
         {
             JObject payload = GetPayloadAsJObject(message);
             if (payload == null)
@@ -50,7 +50,7 @@ namespace ClientMessageHandlers.Handlers
                     return;
                 }
 
-                serverController.InvokeNewChatMessage(username, chatMessage, timestamp);
+                context.ServerController.InvokeNewChatMessage(username, chatMessage, timestamp);
             }
             catch (Exception ex)
             {
