@@ -39,28 +39,27 @@ namespace NullZustand.MessageHandlers.Handlers
 
             try
             {
-                // Get all location updates since the specified ID
-                var updates = _playerManager.GetLocationUpdatesSince(lastUpdateId);
+                var entityDictionary = _entityManager.GetAllEntities();
                 long currentUpdateId = _playerManager.GetCurrentUpdateId();
-
-                // Convert to a simple format for the response
-                var updatesList = updates.Select(u =>
+                var updatesList = entityDictionary.Select(kvp =>
                 {
-                    var entity = _entityManager.GetEntity(u.Player.EntityId);
+                    var entity = kvp.Value;
+                    var entityId = kvp.Key;
+
                     return new
                     {
-                        updateId = u.UpdateId,
-                        username = u.Player.Username,
-                        x = entity?.Position.X ?? 0f,
-                        y = entity?.Position.Y ?? 0f,
-                        z = entity?.Position.Z ?? 0f,
-                        rotX = entity?.Rotation.X ?? 0f,
-                        rotY = entity?.Rotation.Y ?? 0f,
-                        rotZ = entity?.Rotation.Z ?? 0f,
-                        rotW = entity?.Rotation.W ?? 1f,
-                        velocity = entity?.Velocity ?? 0f,
-                        timestampMs = entity?.TimestampMs ?? 0L,
-                        timestamp = u.Timestamp.ToString("o") // ISO 8601 format
+                        updateId = currentUpdateId,
+                        entityId = entityId,
+                        entityType = entity.Type.ToString(),
+                        x = entity.Position.X,
+                        y = entity.Position.Y,
+                        z = entity.Position.Z,
+                        rotX = entity.Rotation.X,
+                        rotY = entity.Rotation.Y,
+                        rotZ = entity.Rotation.Z,
+                        rotW = entity.Rotation.W,
+                        velocity = entity.Velocity,
+                        timestampMs = entity.TimestampMs
                     };
                 }).ToList();
 
@@ -80,7 +79,21 @@ namespace NullZustand.MessageHandlers.Handlers
 
                 // Send error response with full resync data
                 long currentUpdateId = _playerManager.GetCurrentUpdateId();
-                var allPlayers = _playerManager.GetAllPlayerLocations();
+                var entityDictionary = _entityManager.GetAllEntities();
+                var resyncEntityData = entityDictionary.Select(kvp => new
+                {
+                    entityId = kvp.Key,
+                    entityType = kvp.Value.Type.ToString(),
+                    x = kvp.Value.Position.X,
+                    y = kvp.Value.Position.Y,
+                    z = kvp.Value.Position.Z,
+                    rotX = kvp.Value.Rotation.X,
+                    rotY = kvp.Value.Rotation.Y,
+                    rotZ = kvp.Value.Rotation.Z,
+                    rotW = kvp.Value.Rotation.W,
+                    velocity = kvp.Value.Velocity,
+                    timestampMs = kvp.Value.TimestampMs
+                }).ToList();
 
                 await SendAsync(session, new Message
                 {
@@ -90,12 +103,13 @@ namespace NullZustand.MessageHandlers.Handlers
                     {
                         code = "RESYNC_REQUIRED",
                         message = "Your location data is too old. Performing full resync.",
-                        allPlayers = allPlayers,
+                        allEntities = resyncEntityData,
                         lastLocationUpdateId = currentUpdateId
                     }
                 });
             }
         }
+
     }
 }
 

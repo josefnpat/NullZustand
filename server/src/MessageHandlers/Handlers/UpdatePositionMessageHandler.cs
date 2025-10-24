@@ -151,6 +151,7 @@ namespace NullZustand.MessageHandlers.Handlers
                 try
                 {
                     // Now we have exclusive access to write to this session's stream
+                    var entity = _entityManager.GetEntity(evt.Player.EntityId);
                     string json = JsonConvert.SerializeObject(new Message
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -158,17 +159,17 @@ namespace NullZustand.MessageHandlers.Handlers
                         Payload = new
                         {
                             updateId = evt.UpdateId,
-                            username = evt.Player.Username,
                             entityId = evt.Player.EntityId,
-                            x = _entityManager.GetEntity(evt.Player.EntityId)?.Position.X ?? 0f,
-                            y = _entityManager.GetEntity(evt.Player.EntityId)?.Position.Y ?? 0f,
-                            z = _entityManager.GetEntity(evt.Player.EntityId)?.Position.Z ?? 0f,
-                            rotX = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.X ?? 0f,
-                            rotY = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.Y ?? 0f,
-                            rotZ = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.Z ?? 0f,
-                            rotW = _entityManager.GetEntity(evt.Player.EntityId)?.Rotation.W ?? 1f,
-                            velocity = _entityManager.GetEntity(evt.Player.EntityId)?.Velocity ?? 0f,
-                            timestampMs = _entityManager.GetEntity(evt.Player.EntityId)?.TimestampMs ?? 0L
+                            entityType = entity?.Type.ToString() ?? EntityType.Invalid.ToString(),
+                            x = entity?.Position.X ?? 0f,
+                            y = entity?.Position.Y ?? 0f,
+                            z = entity?.Position.Z ?? 0f,
+                            rotX = entity?.Rotation.X ?? 0f,
+                            rotY = entity?.Rotation.Y ?? 0f,
+                            rotZ = entity?.Rotation.Z ?? 0f,
+                            rotW = entity?.Rotation.W ?? 1f,
+                            velocity = entity?.Velocity ?? 0f,
+                            timestampMs = entity?.TimestampMs ?? 0L
                         }
                     });
 

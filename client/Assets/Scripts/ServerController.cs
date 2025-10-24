@@ -608,6 +608,8 @@ public class ServerController : MonoBehaviour
     {
         // Automatically sync time with server after successful login
         SyncTime(OnSyncTimeSuccess, OnSyncTimeFailure);
+        // Request location updates to get current state of all entities
+        GetLocationUpdates(OnLocationUpdatesSuccess, OnLocationUpdatesFailure);
     }
 
     private void OnSyncTimeSuccess(object payload)
@@ -618,6 +620,16 @@ public class ServerController : MonoBehaviour
     private void OnSyncTimeFailure(string error)
     {
         Debug.LogWarning($"[ServerController] Failed to sync time: {error}");
+    }
+
+    private void OnLocationUpdatesSuccess(object payload)
+    {
+        Debug.Log("[ServerController] Location updates received successfully.");
+    }
+
+    private void OnLocationUpdatesFailure(string error)
+    {
+        Debug.LogWarning($"[ServerController] Failed to get location updates: {error}");
     }
 
     public void SetServerClockOffset(long offsetMs)

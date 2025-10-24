@@ -53,6 +53,8 @@ namespace ClientMessageHandlers.Handlers
                 if (payload["allPlayers"] != null)
                 {
                     var allPlayers = payload["allPlayers"] as JArray;
+                    Player currentPlayer = context.ServerController.GetCurrentPlayer();
+
                     foreach (var player in allPlayers)
                     {
                         string username = player["username"].Value<string>();
@@ -75,7 +77,11 @@ namespace ClientMessageHandlers.Handlers
                         if (entityId != EntityManager.INVALID_ENTITY_ID)
                         {
                             playerObj.EntityId = entityId;
-                            context.EntityManager.CreateEntity(entityId, position, rotation, velocity, timestampMs);
+                            context.EntityManager.CreateEntity(entityId, EntityType.Player, position, rotation, velocity, timestampMs);
+                            if (currentPlayer != null && currentPlayer.Username == username)
+                            {
+                                currentPlayer.EntityId = entityId;
+                            }
                         }
 
                         context.ServerController.TriggerPlayerUpdate(playerObj);

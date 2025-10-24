@@ -40,7 +40,6 @@ namespace ClientMessageHandlers.Handlers
                 var allEntities = payload["allEntities"] as JArray;
                 foreach (var entity in allEntities)
                 {
-                    string username = entity["username"].Value<string>();
                     float x = entity["x"]?.Value<float>() ?? 0f;
                     float y = entity["y"]?.Value<float>() ?? 0f;
                     float z = entity["z"]?.Value<float>() ?? 0f;
@@ -50,26 +49,25 @@ namespace ClientMessageHandlers.Handlers
                     float rotW = entity["rotW"]?.Value<float>() ?? 1f;
                     float velocity = entity["velocity"]?.Value<float>() ?? 0f;
                     long timestampMs = entity["timestampMs"]?.Value<long>() ?? 0L;
+                    string entityTypeStr = entity["entityType"]?.Value<string>() ?? "Player";
+
+                    // Parse entity type
+                    EntityType entityType = NullZustand.EntityTypeUtils.ParseEntityType(entityTypeStr);
 
                     var position = new Vector3(x, y, z);
                     var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
                     long entityId = entity["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
-                    
+
                     if (entityId != EntityManager.INVALID_ENTITY_ID)
                     {
-
                         if (context.EntityManager.HasEntity(entityId))
                         {
                             context.EntityManager.UpdateEntity(entityId, position, rotation, velocity, timestampMs);
                         }
                         else
                         {
-                            context.EntityManager.CreateEntity(entityId, position, rotation, velocity, timestampMs);
+                            context.EntityManager.CreateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
                         }
-
-                        var playerObj = new Player(username);
-                        playerObj.EntityId = entityId;
-                        context.ServerController.TriggerPlayerUpdate(playerObj);
                     }
                 }
             }
@@ -80,5 +78,6 @@ namespace ClientMessageHandlers.Handlers
                 context.ServerController.InvokeResponseSuccess(message.Id, payload);
             }
         }
+
     }
 }

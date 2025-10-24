@@ -5,6 +5,25 @@ using System.Threading.Tasks;
 
 namespace NullZustand
 {
+    public enum EntityType
+    {
+        Invalid,
+        Player,
+        Station
+    }
+
+    public static class EntityTypeUtils
+    {
+        public static EntityType ParseEntityType(string entityTypeStr)
+        {
+            if (Enum.TryParse<EntityType>(entityTypeStr, out EntityType parsedType))
+            {
+                return parsedType;
+            }
+            return EntityType.Invalid;
+        }
+    }
+
     [Serializable]
     public class Message
     {

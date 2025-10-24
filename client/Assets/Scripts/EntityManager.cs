@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
+using NullZustand;
 
 public class EntityManager : MonoBehaviour
 {
     public const long INVALID_ENTITY_ID = 0L;
-    
+
     private Dictionary<long, Entity> _entities = new Dictionary<long, Entity>();
     private object _lock = new object();
 
@@ -24,11 +25,11 @@ public class EntityManager : MonoBehaviour
         }
     }
 
-    public void CreateEntity(long entityId, Vector3 position, Quaternion rotation, float velocity, long timestampMs)
+    public void CreateEntity(long entityId, EntityType type, Vector3 position, Quaternion rotation, float velocity, long timestampMs)
     {
         lock (_lock)
         {
-            _entities[entityId] = new Entity(position, rotation, velocity, timestampMs);
+            _entities[entityId] = new Entity(type, position, rotation, velocity, timestampMs);
         }
     }
 

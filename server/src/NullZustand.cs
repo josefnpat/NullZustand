@@ -108,6 +108,8 @@ namespace NullZustand
                 _sessionManager = new SessionManager(_playerManager);
                 _accountManager = new UserAccountManager();
                 _chatManager = new ChatManager();
+
+                CreateDefaultEntities();
                 InitializeHandlers();
 
                 _listener = new TcpListener(IPAddress.Any, port);
@@ -269,6 +271,12 @@ namespace NullZustand
                     Console.WriteLine($"[ERROR] Idle session cleanup failed: {ex.Message}");
                 }
             }
+        }
+
+        private void CreateDefaultEntities()
+        {
+            long stationEntityId = _entityManager.CreateEntity(EntityType.Station, new Vec3(0, 0, -55), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
+            Console.WriteLine($"[STATION] Created station entity with ID: {stationEntityId} at position (0, 0, -55)");
         }
 
     }

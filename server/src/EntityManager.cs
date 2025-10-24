@@ -22,10 +22,10 @@ namespace NullZustand
             return entityId;
         }
 
-        public long CreateEntity(Vec3 position, Quat rotation, float velocity, long timestampMs)
+        public long CreateEntity(EntityType type, Vec3 position, Quat rotation, float velocity, long timestampMs)
         {
             long entityId = _nextEntityId++;
-            var entity = new Entity(position, rotation, velocity, timestampMs);
+            var entity = new Entity(type, position, rotation, velocity, timestampMs);
             _entities.TryAdd(entityId, entity);
             return entityId;
         }
@@ -57,6 +57,11 @@ namespace NullZustand
         public bool HasEntity(long entityId)
         {
             return _entities.ContainsKey(entityId);
+        }
+
+        public System.Collections.Generic.Dictionary<long, Entity> GetAllEntities()
+        {
+            return new System.Collections.Generic.Dictionary<long, Entity>(_entities);
         }
     }
 }

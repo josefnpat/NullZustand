@@ -70,12 +70,10 @@ namespace ClientMessageHandlers.Handlers
         {
             try
             {
-                string username = update["username"]?.Value<string>();
-                if (string.IsNullOrEmpty(username))
-                {
-                    Debug.LogWarning("[LocationUpdate] Invalid update: missing username");
-                    return;
-                }
+                string entityTypeStr = update["entityType"]?.Value<string>() ?? "Player";
+
+                // Parse entity type
+                EntityType entityType = NullZustand.EntityTypeUtils.ParseEntityType(entityTypeStr);
 
                 long updateId = update["updateId"]?.Value<long>() ?? 0;
                 float x = update["x"]?.Value<float>() ?? 0f;
@@ -97,22 +95,27 @@ namespace ClientMessageHandlers.Handlers
                 // Convert to Unity types
                 var position = new Vector3(x, y, z);
                 var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
-                var player = new Player(username);
 
                 long entityId = update["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
                 if (entityId != EntityManager.INVALID_ENTITY_ID)
                 {
-                    player.EntityId = entityId;
-                    context.EntityManager.CreateEntity(entityId, position, rotation, velocity, timestampMs);
+                    context.EntityManager.CreateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
+                    if (entityType == EntityType.Player)
+                    {
+                        Player currentPlayer = context.ServerController.GetCurrentPlayer();
+                        if (currentPlayer != null && currentPlayer.EntityId == entityId)
+                        {
+                            context.ServerController.TriggerPlayerUpdate(currentPlayer);
+                        }
+                    }
                 }
-
-                context.ServerController.TriggerPlayerUpdate(player);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[LocationUpdate] Failed to process update: {ex.Message}");
             }
         }
+
     }
 }
 
