@@ -6,6 +6,8 @@ public class EntityManager : MonoBehaviour
 {
     public const long INVALID_ENTITY_ID = 0L;
 
+    [SerializeField]
+    private EntityTypePrefabsScriptableObjectScript _entityTypePrefabs;
     private Dictionary<long, Entity> _entities = new Dictionary<long, Entity>();
     private object _lock = new object();
 
