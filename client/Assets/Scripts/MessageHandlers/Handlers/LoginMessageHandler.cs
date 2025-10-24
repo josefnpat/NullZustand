@@ -77,7 +77,7 @@ namespace ClientMessageHandlers.Handlers
                         if (entityId != EntityManager.INVALID_ENTITY_ID)
                         {
                             playerObj.EntityId = entityId;
-                            context.EntityManager.CreateEntity(entityId, EntityType.Player, position, rotation, velocity, timestampMs);
+                            context.EntityManager.CreateOrUpdateEntity(entityId, EntityType.Player, position, rotation, velocity, timestampMs);
                             if (currentPlayer != null && currentPlayer.Username == username)
                             {
                                 currentPlayer.EntityId = entityId;

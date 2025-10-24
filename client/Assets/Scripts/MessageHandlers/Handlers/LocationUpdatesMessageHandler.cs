@@ -99,7 +99,7 @@ namespace ClientMessageHandlers.Handlers
                 long entityId = update["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
                 if (entityId != EntityManager.INVALID_ENTITY_ID)
                 {
-                    context.EntityManager.CreateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
+                    context.EntityManager.CreateOrUpdateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
                     if (entityType == EntityType.Player)
                     {
                         Player currentPlayer = context.ServerController.GetCurrentPlayer();

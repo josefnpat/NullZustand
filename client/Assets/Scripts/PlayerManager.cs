@@ -8,11 +8,6 @@ using UnityEngine.InputSystem;
 public class PlayerManager : MonoBehaviour
 {
     [SerializeField]
-    private GameObject _playerPrefab;
-
-    [SerializeField]
-    private TMP_Text _statusText;
-    [SerializeField]
     private TMP_Text _velocityText;
 
     [SerializeField]
@@ -141,10 +136,31 @@ public class PlayerManager : MonoBehaviour
         }
         else
         {
-            GameObject go = Instantiate(_playerPrefab);
-            go.name = $"Player({player.Username})";
-            playerController = go.GetComponent<PlayerController>();
-            playerController.Setup();
+            Entity entity = _entityManager.GetEntity(player.EntityId);
+            if (entity == null)
+            {
+                Debug.LogWarning($"[PlayerManager] Entity {player.EntityId} not found for player {player.Username}");
+                return;
+            }
+
+            GameObject entityGameObject = _entityManager.GetEntityGameObject(player.EntityId);
+            if (entityGameObject == null)
+            {
+                entityGameObject = _entityManager.CreateEntityGameObject(player.EntityId, entity.Type, entity.Position, entity.Rotation);
+                if (entityGameObject == null)
+                {
+                    Debug.LogError($"[PlayerManager] Failed to create GameObject for player {player.Username}");
+                    return;
+                }
+            }
+
+            playerController = entityGameObject.GetComponent<PlayerController>();
+            if (playerController == null)
+            {
+                Debug.LogError($"[PlayerManager] PlayerController component not found on GameObject for player {player.Username}");
+                return;
+            }
+
             _playerControllers.Add(player.Username, playerController);
             _cameraManager.RegisterPlayerController(player.Username, playerController);
         }
@@ -153,11 +169,9 @@ public class PlayerManager : MonoBehaviour
         // Sync the current rotation and velocity if this is the current player
         Player currentPlayer = _serverController.GetCurrentPlayer();
         bool isCurrentPlayer = currentPlayer != null && player.Username == currentPlayer.Username;
-
         if (isCurrentPlayer)
         {
-
-            var entity = _entityManager.GetEntity(player.EntityId);
+            Entity entity = _entityManager.GetEntity(player.EntityId);
             if (entity != null)
             {
                 _currentRotation = entity.Rotation;
@@ -207,7 +221,10 @@ public class PlayerManager : MonoBehaviour
                 if (controller.gameObject != null)
                 {
                     _cameraManager.UnregisterPlayerController(username);
-                    Destroy(controller.gameObject);
+                }
+                if (controller.EntityId != EntityManager.INVALID_ENTITY_ID)
+                {
+                    _entityManager.RemoveEntity(controller.EntityId);
                 }
             }
         }

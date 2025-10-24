@@ -66,7 +66,7 @@ namespace ClientMessageHandlers.Handlers
                         }
                         else
                         {
-                            context.EntityManager.CreateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
+                            context.EntityManager.CreateOrUpdateEntity(entityId, entityType, position, rotation, velocity, timestampMs);
                         }
                     }
                 }

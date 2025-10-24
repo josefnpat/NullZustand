@@ -516,7 +516,7 @@ public class ServerController : MonoBehaviour
                 string json = await MessageFraming.ReadMessageAsync(_stream);
                 if (json == null)
                 {
-                    Debug.LogWarning("Connection closed or read failed");
+                    Debug.Log("Connection closed or read failed");
                     break;
                 }
 

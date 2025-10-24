@@ -8,6 +8,8 @@ public class Entity
     public Quaternion Rotation { get; set; }
     public float Velocity { get; set; }
     public long TimestampMs { get; set; }
+    public GameObject GameObject { get; set; }
+    public EntityController EntityController { get; set; }
 
     public Entity()
     {
@@ -16,14 +18,18 @@ public class Entity
         Rotation = Quaternion.identity;
         Velocity = 0f;
         TimestampMs = 0L;
+        GameObject = null;
+        EntityController = null;
     }
 
-    public Entity(EntityType type, Vector3 position, Quaternion rotation, float velocity, long timestampMs)
+    public Entity(EntityType type, Vector3 position, Quaternion rotation, float velocity, long timestampMs, GameObject gameObject, EntityController entityController)
     {
         Type = type;
         Position = position;
         Rotation = rotation;
         Velocity = velocity;
         TimestampMs = timestampMs;
+        GameObject = gameObject;
+        EntityController = entityController;
     }
 }
