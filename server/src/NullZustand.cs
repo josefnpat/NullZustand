@@ -275,8 +275,11 @@ namespace NullZustand
 
         private void CreateDefaultEntities()
         {
-            long stationEntityId = _entityManager.CreateEntity(EntityType.Station, new Vec3(0, 0, -55), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
-            Console.WriteLine($"[STATION] Created station entity with ID: {stationEntityId} at position (0, 0, -55)");
+            float distance = 250;
+            _entityManager.CreateEntity(EntityType.Station, new Vec3(0, 0, -distance), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
+            _entityManager.CreateEntity(EntityType.Station, new Vec3(0, 0, distance), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
+            _entityManager.CreateEntity(EntityType.Station, new Vec3(-distance, 0, 0), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
+            _entityManager.CreateEntity(EntityType.Station, new Vec3(distance, 0, 0), new Quat(0, 0, 0, 1), 0f, TimeUtils.GetUnixTimestampMs());
         }
 
     }
