@@ -109,7 +109,11 @@ namespace NullZustand
                         rotZ = 0f,
                         rotW = 1f,
                         velocity = 0f,
-                        timestampMs = 0L
+                        timestampMs = 0L,
+                        profile = new
+                        {
+                            profileImage = player.Profile.ProfileImage
+                        }
                     };
                 }
                 return new
@@ -124,7 +128,11 @@ namespace NullZustand
                     rotZ = state.Rotation.Z,
                     rotW = state.Rotation.W,
                     velocity = state.Velocity,
-                    timestampMs = state.TimestampMs
+                    timestampMs = state.TimestampMs,
+                    profile = new
+                    {
+                        profileImage = player.Profile.ProfileImage
+                    }
                 };
             }).Cast<object>().ToList();
         }

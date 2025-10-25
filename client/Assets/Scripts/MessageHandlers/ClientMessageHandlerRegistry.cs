@@ -37,6 +37,8 @@ namespace ClientMessageHandlers
                 catch (Exception ex)
                 {
                     Debug.LogError($"[CLIENT_HANDLER] Failed to handle {message.Type}: {ex.Message}");
+                    Debug.LogError($"[CLIENT_HANDLER] Stack trace: {ex.StackTrace}");
+                    Debug.LogError($"[CLIENT_HANDLER] Message payload: {UnityEngine.JsonUtility.ToJson(message.Payload)}");
                     return false;
                 }
             }

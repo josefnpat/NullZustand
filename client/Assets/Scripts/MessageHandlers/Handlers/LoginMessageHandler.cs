@@ -49,7 +49,7 @@ namespace ClientMessageHandlers.Handlers
                     context.ServerController.SetLastLocationUpdateId(updateId);
                 }
 
-                // Load all player locations
+                // Load all player locations and profiles
                 if (payload["allPlayers"] != null)
                 {
                     var allPlayers = payload["allPlayers"] as JArray;
@@ -73,6 +73,10 @@ namespace ClientMessageHandlers.Handlers
                         var rotation = new Quaternion(rotX, rotY, rotZ, rotW);
                         var playerObj = new Player(username);
 
+                        var profile = player["profile"];
+                        int profileImage = profile["profileImage"]?.Value<int>() ?? -1;
+                        playerObj.Profile = new Profile(profileImage);
+
                         long entityId = player["entityId"]?.Value<long>() ?? EntityManager.INVALID_ENTITY_ID;
                         if (entityId != EntityManager.INVALID_ENTITY_ID)
                         {
@@ -88,14 +92,14 @@ namespace ClientMessageHandlers.Handlers
                     }
                 }
 
-                // Handle current player's profile
+                // Handle current player's profile (fallback for backward compatibility)
                 if (payload["profile"] != null)
                 {
                     var profile = payload["profile"];
                     int profileImage = profile["profileImage"]?.Value<int>() ?? -1;
 
                     // Set the current player's profile using ProfileManager from context
-                    context.ProfileManager.SetProfile(profileImage);
+                    context.ProfileManager.SetCurrentPlayerProfile(profileImage);
                 }
 
                 context.ServerController.InvokePlayerAuthenticate();

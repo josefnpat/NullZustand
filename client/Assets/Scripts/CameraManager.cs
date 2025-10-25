@@ -141,4 +141,16 @@ public class CameraManager : MonoBehaviour
         SwitchToMainCamera();
     }
 
+    public Camera GetCurrentCamera()
+    {
+        if (_currentPlayerCamera != null && _currentPlayerCamera.enabled)
+        {
+            return _currentPlayerCamera;
+        }
+        if (_mainCamera != null && _mainCamera.enabled)
+        {
+            return _mainCamera;
+        }
+        return Camera.main;
+    }
 }

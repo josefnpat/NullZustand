@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -73,33 +72,43 @@ public class ProfileManager : MonoBehaviour
 
     public void SetLocalProfilePicture(int profileImage)
     {
-        if (profileImage == -1)
-        {
-            Player currentPlayer = _serverController.GetCurrentPlayer();
-            // Convert username to a deterministic integer for consistent "random" selection
-            _currentProfileImage = Mathf.Abs(currentPlayer.Username.GetHashCode());
-        }
-        else
-        {
-            _currentProfileImage = profileImage;
-        }
-        _currentProfileImage %= _profilePicturesScriptableObjectScript.profilePictures.Count;
-        _profilePictureImage.sprite = FindProfileImage(_currentProfileImage);
+        Player player = _serverController.GetCurrentPlayer();
+        _currentProfileImage = GetValidProfilePictureIndex(profileImage, player);
+        _profilePictureImage.sprite = FindProfileImage(_currentProfileImage, player);
     }
 
-    public void SetProfile(int profileImage)
+    public void SetCurrentPlayerProfile(int profileImage)
     {
         SetLocalProfilePicture(profileImage);
     }
 
-    private Sprite FindProfileImage(int index)
+    private Sprite FindProfileImage(int index, Player player)
     {
-        return _profilePicturesScriptableObjectScript.profilePictures[index];
+        int validIndex = GetValidProfilePictureIndex(index, player);
+        return _profilePicturesScriptableObjectScript.profilePictures[validIndex];
+    }
+
+    private int GetValidProfilePictureIndex(int index, Player player)
+    {
+        if (index == -1)
+        {
+            // Convert username to a deterministic integer for consistent "random" selection
+            return Mathf.Abs(player.Username.GetHashCode()) % _profilePicturesScriptableObjectScript.profilePictures.Count;
+        }
+        else
+        {
+            return index % _profilePicturesScriptableObjectScript.profilePictures.Count;
+        }
+    }
+
+    public Sprite FindProfileImage(Player player)
+    {
+        return FindProfileImage(player.Profile.ProfileImage, player);
     }
 
     private void OnProfileUpdate(string username, int profileImage)
     {
-        _playerManager.SetProfile(username, new Profile(profileImage));
+        _playerManager.UpdateProfile(username, new Profile(profileImage));
 
         // Check if this is the current player
         Player currentPlayer = _serverController.GetCurrentPlayer();

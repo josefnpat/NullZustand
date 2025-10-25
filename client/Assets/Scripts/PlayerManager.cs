@@ -161,14 +161,18 @@ public class PlayerManager : MonoBehaviour
                 return;
             }
 
+            playerController.Setup();
+
             _playerControllers.Add(player.Username, playerController);
             _cameraManager.RegisterPlayerController(player.Username, playerController);
         }
-        playerController.SetPlayer(player);
 
         // Sync the current rotation and velocity if this is the current player
         Player currentPlayer = _serverController.GetCurrentPlayer();
         bool isCurrentPlayer = currentPlayer != null && player.Username == currentPlayer.Username;
+
+        playerController.SetPlayer(player, isCurrentPlayer);
+
         if (isCurrentPlayer)
         {
             Entity entity = _entityManager.GetEntity(player.EntityId);
@@ -231,13 +235,13 @@ public class PlayerManager : MonoBehaviour
         _playerControllers.Clear();
     }
 
-    public void SetProfile(string username, Profile profile)
+    public void UpdateProfile(string username, Profile profile)
     {
-        if (_playerControllers.TryGetValue(username, out PlayerController controller))
+        if (_playerControllers.TryGetValue(username, out PlayerController playerController))
         {
-            if (controller.Player != null)
+            if (playerController.Player != null)
             {
-                controller.Player.Profile = profile;
+                playerController.UpdatePlayerProfile(profile);
                 Debug.Log($"[PlayerManager] Updated profile for {username}: profileImage={profile.ProfileImage}");
             }
         }
