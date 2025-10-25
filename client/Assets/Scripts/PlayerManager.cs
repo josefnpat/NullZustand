@@ -231,6 +231,18 @@ public class PlayerManager : MonoBehaviour
         _playerControllers.Clear();
     }
 
+    public void SetProfile(string username, Profile profile)
+    {
+        if (_playerControllers.TryGetValue(username, out PlayerController controller))
+        {
+            if (controller.Player != null)
+            {
+                controller.Player.Profile = profile;
+                Debug.Log($"[PlayerManager] Updated profile for {username}: displayName={profile.DisplayName}, profileImage={profile.ProfileImage}");
+            }
+        }
+    }
+
     void OnDestroy()
     {
         if (_serverController != null)

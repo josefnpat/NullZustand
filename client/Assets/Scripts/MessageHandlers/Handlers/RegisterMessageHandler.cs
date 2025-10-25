@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class RegisterMessageHandler : ClientMessageHandler, IClientMessageHandler<string, string>
+    public class RegisterMessageHandler : ClientMessageHandler, IClientMessageHandler<RegisterRequest>
     {
         public override string RequestMessageType => MessageTypes.REGISTER_REQUEST;
         public override string ResponseMessageType => MessageTypes.REGISTER_RESPONSE;
 
-        public async Task<string> SendRequestAsync(ServerController serverController, string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
+        public async Task<string> SendRequestAsync(ServerController serverController, RegisterRequest request, Action<object> onSuccess = null, Action<string> onFailure = null)
         {
             string messageId = GenerateMessageId();
             serverController.RegisterResponseCallbacks(messageId, onSuccess, onFailure);
@@ -20,7 +20,7 @@ namespace ClientMessageHandlers.Handlers
             {
                 Id = messageId,
                 Type = MessageTypes.REGISTER_REQUEST,
-                Payload = new { username = username, password = password }
+                Payload = new { username = request.Username, password = request.Password }
             });
 
             return messageId;
@@ -49,6 +49,19 @@ namespace ClientMessageHandlers.Handlers
                 string error = payload["error"]?.Value<string>() ?? "Unknown error";
                 context.ServerController.InvokeResponseFailure(message.Id, error);
             }
+        }
+    }
+
+    [Serializable]
+    public class RegisterRequest
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+
+        public RegisterRequest(string username, string password)
+        {
+            Username = username;
+            Password = password;
         }
     }
 }

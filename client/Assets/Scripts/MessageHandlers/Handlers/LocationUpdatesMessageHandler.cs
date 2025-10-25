@@ -35,7 +35,9 @@ namespace ClientMessageHandlers.Handlers
             {
                 Debug.LogWarning($"[{message.Type}] Received null or invalid payload");
                 if (message.Id != null)
+                {
                     context.ServerController.InvokeResponseFailure(message.Id, "Invalid payload");
+                }
                 return;
             }
 
@@ -73,7 +75,7 @@ namespace ClientMessageHandlers.Handlers
                 string entityTypeStr = update["entityType"]?.Value<string>() ?? "Player";
 
                 // Parse entity type
-                EntityType entityType = NullZustand.EntityTypeUtils.ParseEntityType(entityTypeStr);
+                EntityType entityType = EntityTypeUtils.ParseEntityType(entityTypeStr);
 
                 long updateId = update["updateId"]?.Value<long>() ?? 0;
                 float x = update["x"]?.Value<float>() ?? 0f;

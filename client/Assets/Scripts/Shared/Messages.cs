@@ -44,6 +44,9 @@ namespace NullZustand
         public const string LOGIN_RESPONSE = "LoginResponse";
         public const string PING = "Ping";
         public const string PONG = "Pong";
+        public const string PROFILE_UPDATE_REQUEST = "ProfileUpdateRequest";
+        public const string PROFILE_UPDATE_RESPONSE = "ProfileUpdateResponse";
+        public const string PROFILE_UPDATE_BROADCAST = "ProfileUpdateBroadcast";
         public const string REGISTER_REQUEST = "RegisterRequest";
         public const string REGISTER_RESPONSE = "RegisterResponse";
         public const string RESYNC_REQUIRED_RESPONSE = "ResyncRequiredResponse";

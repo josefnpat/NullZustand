@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class ChatMessageHandler : ClientMessageHandler, IClientMessageHandler<string>
+    public class ChatMessageHandler : ClientMessageHandler, IClientMessageHandler<ChatMessageRequest>
     {
         public override string RequestMessageType => MessageTypes.CHAT_MESSAGE_REQUEST;
         public override string ResponseMessageType => MessageTypes.CHAT_MESSAGE_RESPONSE;
 
-        public async Task<string> SendRequestAsync(ServerController serverController, string message, Action<object> onSuccess = null, Action<string> onFailure = null)
+        public async Task<string> SendRequestAsync(ServerController serverController, ChatMessageRequest request, Action<object> onSuccess = null, Action<string> onFailure = null)
         {
             string messageId = GenerateMessageId();
             // Note: We don't register callbacks here because chat messages don't get a direct response
@@ -21,7 +21,7 @@ namespace ClientMessageHandlers.Handlers
             {
                 Id = messageId,
                 Type = MessageTypes.CHAT_MESSAGE_REQUEST,
-                Payload = new { message = message }
+                Payload = new { message = request.Message }
             });
 
             onSuccess?.Invoke(null);
@@ -56,6 +56,17 @@ namespace ClientMessageHandlers.Handlers
             {
                 Debug.LogError($"[{ResponseMessageType}] Failed to parse chat message: {ex.Message}");
             }
+        }
+    }
+
+    [Serializable]
+    public class ChatMessageRequest
+    {
+        public string Message { get; set; }
+
+        public ChatMessageRequest(string message)
+        {
+            Message = message;
         }
     }
 }

@@ -104,13 +104,21 @@ namespace NullZustand.MessageHandlers.Handlers
                 var allPlayers = _playerManager.GetAllPlayerLocations();
                 long currentUpdateId = _playerManager.GetCurrentUpdateId();
 
+                // Get the current player's profile
+                var currentPlayer = _playerManager.GetOrCreatePlayer(payload.username);
+
                 // Client can find their own position in allPlayers array
                 await SendResponseAsync(session, message, MessageTypes.LOGIN_RESPONSE, new
                 {
                     success = true,
                     username = payload.username,
                     allPlayers = allPlayers,
-                    lastLocationUpdateId = currentUpdateId
+                    lastLocationUpdateId = currentUpdateId,
+                    profile = new
+                    {
+                        displayName = currentPlayer.Profile.DisplayName,
+                        profileImage = currentPlayer.Profile.ProfileImage
+                    }
                 });
             }
             else

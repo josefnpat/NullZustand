@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace ClientMessageHandlers.Handlers
 {
-    public class LoginHandlerMessageHandler : ClientMessageHandler, IClientMessageHandler<string, string>
+    public class LoginHandlerMessageHandler : ClientMessageHandler, IClientMessageHandler<LoginRequest>
     {
         public override string RequestMessageType => MessageTypes.LOGIN_REQUEST;
         public override string ResponseMessageType => MessageTypes.LOGIN_RESPONSE;
 
-        public async Task<string> SendRequestAsync(ServerController serverController, string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
+        public async Task<string> SendRequestAsync(ServerController serverController, LoginRequest request, Action<object> onSuccess = null, Action<string> onFailure = null)
         {
             string messageId = GenerateMessageId();
             serverController.RegisterResponseCallbacks(messageId, onSuccess, onFailure);
@@ -20,7 +20,7 @@ namespace ClientMessageHandlers.Handlers
             {
                 Id = messageId,
                 Type = MessageTypes.LOGIN_REQUEST,
-                Payload = new { username = username, password = password }
+                Payload = new { username = request.Username, password = request.Password }
             });
 
             return messageId;
@@ -88,6 +88,24 @@ namespace ClientMessageHandlers.Handlers
                     }
                 }
 
+                // Handle current player's profile
+                if (payload["profile"] != null)
+                {
+                    var profile = payload["profile"];
+                    string displayName = profile["displayName"]?.Value<string>();
+                    int profileImage = profile["profileImage"]?.Value<int>() ?? -1;
+
+                    if (!string.IsNullOrEmpty(displayName))
+                    {
+                        // Get ProfileManager and set the current player's profile
+                        var profileManager = ServiceLocator.Get<ProfileManager>();
+                        if (profileManager != null)
+                        {
+                            profileManager.SetProfile(displayName, profileImage);
+                        }
+                    }
+                }
+
                 context.ServerController.InvokePlayerAuthenticate();
 
                 context.ServerController.InvokeResponseSuccess(message.Id, payload);
@@ -97,6 +115,19 @@ namespace ClientMessageHandlers.Handlers
                 string error = payload["error"]?.Value<string>() ?? "Unknown error";
                 context.ServerController.InvokeResponseFailure(message.Id, error);
             }
+        }
+    }
+
+    [Serializable]
+    public class LoginRequest
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+
+        public LoginRequest(string username, string password)
+        {
+            Username = username;
+            Password = password;
         }
     }
 }

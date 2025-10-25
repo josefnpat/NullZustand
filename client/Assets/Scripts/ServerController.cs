@@ -61,6 +61,7 @@ public class ServerController : MonoBehaviour
     public event Action OnSessionDisconnect;
     public event Action OnPlayerAuthenticate;
     public event Action<string, string, long> OnNewChatMessage; // (username, message, timestamp)
+    public event Action<string, string, int> OnProfileUpdate; // (username, displayName, profileImage)
     public event Action OnTimeSyncUpdate;
     public event Action OnServerListUpdate;
 
@@ -92,8 +93,8 @@ public class ServerController : MonoBehaviour
             }
         }
 
-        // Periodically sync time with server while connected
-        if (IsConnected())
+        // Periodically sync time with server while connected and authenticated
+        if (IsConnected() && IsAuthenticated())
         {
             if (Time.unscaledTime - _lastTimeSyncTime > TIME_SYNC_INTERVAL)
             {
@@ -112,6 +113,7 @@ public class ServerController : MonoBehaviour
         _handlerRegistry.RegisterHandler(new LocationUpdatesMessageHandler());
         _handlerRegistry.RegisterHandler(new LoginHandlerMessageHandler());
         _handlerRegistry.RegisterHandler(new PingMessageHandler());
+        _handlerRegistry.RegisterHandler(new ProfileUpdateMessageHandler());
         _handlerRegistry.RegisterHandler(new RegisterMessageHandler());
         _handlerRegistry.RegisterHandler(new ResyncRequiredMessageHandler());
         _handlerRegistry.RegisterHandler(new TimeSyncMessageHandler());
@@ -211,9 +213,12 @@ public class ServerController : MonoBehaviour
             return;
         }
 
-        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string, string>>(MessageTypes.REGISTER_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<RegisterRequest>>(MessageTypes.REGISTER_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
+        {
+            var request = new RegisterRequest(username, password);
+            await handler.SendRequestAsync(this, request, onSuccess, onFailure);
+        }
     }
 
     public async void Login(string username, string password, Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -227,9 +232,29 @@ public class ServerController : MonoBehaviour
 
         _currentPlayer = new Player(username);
 
-        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string, string>>(MessageTypes.LOGIN_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<LoginRequest>>(MessageTypes.LOGIN_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, username, password, onSuccess, onFailure);
+        {
+            var request = new LoginRequest(username, password);
+            await handler.SendRequestAsync(this, request, onSuccess, onFailure);
+        }
+    }
+
+    public async void UpdateProfile(string displayName, int profileImage, Action<object> onSuccess = null, Action<string> onFailure = null)
+    {
+        var result = await EnsureConnectedAsync();
+        if (!result.Success)
+        {
+            onFailure?.Invoke(result.ErrorMessage);
+            return;
+        }
+
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<ProfileUpdateRequest>>(MessageTypes.PROFILE_UPDATE_REQUEST);
+        if (handler != null)
+        {
+            var request = new ProfileUpdateRequest(displayName, profileImage);
+            await handler.SendRequestAsync(this, request, onSuccess, onFailure);
+        }
     }
 
     public async void SendPing(Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -262,9 +287,12 @@ public class ServerController : MonoBehaviour
 
     public async void UpdatePosition(Quaternion rotation, float velocity, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<Quaternion, float>>(MessageTypes.UPDATE_POSITION_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<UpdatePositionRequest>>(MessageTypes.UPDATE_POSITION_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, rotation, velocity, onSuccess, onFailure);
+        {
+            var request = new UpdatePositionRequest(rotation, velocity);
+            await handler.SendRequestAsync(this, request, onSuccess, onFailure);
+        }
     }
 
     public async void GetLocationUpdates(Action<object> onSuccess = null, Action<string> onFailure = null)
@@ -276,9 +304,12 @@ public class ServerController : MonoBehaviour
 
     public async void SendNewChatMessage(string message, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
-        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<string>>(MessageTypes.CHAT_MESSAGE_REQUEST);
+        var handler = _handlerRegistry.GetHandler<IClientMessageHandler<ChatMessageRequest>>(MessageTypes.CHAT_MESSAGE_REQUEST);
         if (handler != null)
-            await handler.SendRequestAsync(this, message, onSuccess, onFailure);
+        {
+            var request = new ChatMessageRequest(message);
+            await handler.SendRequestAsync(this, request, onSuccess, onFailure);
+        }
     }
 
     public void Disconnect()
@@ -296,17 +327,17 @@ public class ServerController : MonoBehaviour
 
     public bool IsConnected()
     {
-        return _client != null && _client.Connected && _stream != null;
-    }
-
-    public bool IsAuthenticated()
-    {
-        return _isAuthenticated;
+        return _client != null && _stream != null && _client.Connected;
     }
 
     public Player GetCurrentPlayer()
     {
         return _currentPlayer;
+    }
+
+    public bool IsAuthenticated()
+    {
+        return _isAuthenticated;
     }
 
     private bool IsClientDisconnected()
@@ -602,6 +633,11 @@ public class ServerController : MonoBehaviour
     public void InvokeNewChatMessage(string username, string message, long timestamp)
     {
         OnNewChatMessage?.Invoke(username, message, timestamp);
+    }
+
+    public void InvokeNewProfileUpdate(string username, string displayName, int profileImage)
+    {
+        OnProfileUpdate?.Invoke(username, displayName, profileImage);
     }
 
     private void OnPlayerAuthenticated()

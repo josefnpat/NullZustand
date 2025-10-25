@@ -6,6 +6,7 @@ public class Player
     public DateTime CreatedAt { get; }
     public DateTime LastSeen { get; set; }
     public long EntityId { get; set; }
+    public Profile Profile { get; set; }
 
     public Player(string username)
     {
@@ -13,5 +14,6 @@ public class Player
         CreatedAt = DateTime.UtcNow;
         LastSeen = DateTime.UtcNow;
         EntityId = EntityManager.INVALID_ENTITY_ID;
+        Profile = new Profile(username);
     }
 }

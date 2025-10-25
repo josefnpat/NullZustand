@@ -14,6 +14,7 @@ public class PlayerController : MonoBehaviour
 
     private int _currentCameraLocationIndex = 0;
     private Player _player;
+    public Player Player { get { return _player; } }
     public long EntityId => _player?.EntityId ?? EntityManager.INVALID_ENTITY_ID;
 
     public void Start()

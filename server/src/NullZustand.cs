@@ -160,6 +160,7 @@ namespace NullZustand
             _handlerRegistry.RegisterHandler(new UpdatePositionMessageHandler(_playerManager, _sessionManager, _entityManager));
             _handlerRegistry.RegisterHandler(new GetLocationUpdatesMessageHandler(_playerManager, _entityManager));
             _handlerRegistry.RegisterHandler(new ChatMessageHandler(_chatManager, _sessionManager));
+            _handlerRegistry.RegisterHandler(new ProfileUpdateRequestMessageHandler(_playerManager, _sessionManager));
         }
 
         private async Task HandleClientAsync(TcpClient client)

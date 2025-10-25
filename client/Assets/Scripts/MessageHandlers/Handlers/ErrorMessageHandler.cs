@@ -7,7 +7,7 @@ namespace ClientMessageHandlers.Handlers
 {
     public class ErrorMessageHandler : ClientMessageHandler, IClientMessageHandlerNoParam
     {
-        public override string RequestMessageType => MessageTypes.ERROR; // Not used for error
+        public override string RequestMessageType => null; // Not used for error
         public override string ResponseMessageType => MessageTypes.ERROR;
 
         public System.Threading.Tasks.Task<string> SendRequestAsync(ServerController serverController, Action<object> onSuccess = null, Action<string> onFailure = null)

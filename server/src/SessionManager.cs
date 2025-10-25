@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace NullZustand
 {
@@ -105,6 +106,31 @@ namespace NullZustand
             }
 
             return cleanedCount;
+        }
+
+        public async Task BroadcastToAllSessionsAsync(Message message)
+        {
+            var sessions = GetAllAuthenticatedSessions();
+
+            foreach (var session in sessions)
+            {
+                await session.StreamSemaphore.WaitAsync();
+
+                try
+                {
+                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+                    await MessageFraming.WriteMessageAsync(session.Stream, json);
+                    Console.WriteLine($"[BROADCAST] Sent {message.Type} to {session.SessionId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERROR] Failed to broadcast {message.Type} to {session.SessionId}: {ex.Message}");
+                }
+                finally
+                {
+                    session.StreamSemaphore.Release();
+                }
+            }
         }
     }
 }
