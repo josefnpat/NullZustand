@@ -238,7 +238,7 @@ public class PlayerManager : MonoBehaviour
             if (controller.Player != null)
             {
                 controller.Player.Profile = profile;
-                Debug.Log($"[PlayerManager] Updated profile for {username}: displayName={profile.DisplayName}, profileImage={profile.ProfileImage}");
+                Debug.Log($"[PlayerManager] Updated profile for {username}: profileImage={profile.ProfileImage}");
             }
         }
     }

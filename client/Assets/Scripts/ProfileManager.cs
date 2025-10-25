@@ -7,8 +7,6 @@ public class ProfileManager : MonoBehaviour
     [SerializeField]
     private ProfilePicturesScriptableObjectScript _profilePicturesScriptableObjectScript;
     [SerializeField]
-    private TMP_InputField _displayNameInputField;
-    [SerializeField]
     private Button _nextProfilePictureButton;
     [SerializeField]
     private Button _previousProfilePictureButton;
@@ -59,7 +57,7 @@ public class ProfileManager : MonoBehaviour
 
     private void OnUpdateProfileButton()
     {
-        _serverController.UpdateProfile(_displayNameInputField.text, _currentProfileImage,
+        _serverController.UpdateProfile(_currentProfileImage,
             OnUpdateProfileSuccess, OnUpdateProfileFailure);
     }
 
@@ -89,9 +87,8 @@ public class ProfileManager : MonoBehaviour
         _profilePictureImage.sprite = FindProfileImage(_currentProfileImage);
     }
 
-    public void SetProfile(string displayName, int profileImage)
+    public void SetProfile(int profileImage)
     {
-        _displayNameInputField.text = displayName;
         SetLocalProfilePicture(profileImage);
     }
 
@@ -100,9 +97,9 @@ public class ProfileManager : MonoBehaviour
         return _profilePicturesScriptableObjectScript.profilePictures[index];
     }
 
-    private void OnProfileUpdate(string username, string displayName, int profileImage)
+    private void OnProfileUpdate(string username, int profileImage)
     {
-        _playerManager.SetProfile(username, new Profile(displayName, profileImage));
+        _playerManager.SetProfile(username, new Profile(profileImage));
 
         // Check if this is the current player
         Player currentPlayer = _serverController.GetCurrentPlayer();
@@ -110,8 +107,7 @@ public class ProfileManager : MonoBehaviour
 
         if (isCurrentPlayer)
         {
-            _statusController.SetStatus($"Profile updated: {displayName}");
-            _displayNameInputField.text = displayName;
+            _statusController.SetStatus("Profile updated");
             SetLocalProfilePicture(profileImage);
         }
         else

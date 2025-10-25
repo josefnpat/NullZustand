@@ -5,7 +5,6 @@ namespace NullZustand.MessageHandlers.Handlers
 {
     public class ProfileUpdateRequestPayload
     {
-        public string displayName { get; set; }
         public int profileImage { get; set; }
     }
 
@@ -35,19 +34,6 @@ namespace NullZustand.MessageHandlers.Handlers
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(payload.displayName))
-            {
-                await SendResponseAsync(session, message, MessageTypes.PROFILE_UPDATE_RESPONSE,
-                    new { success = false, error = "Display name cannot be empty" });
-                return;
-            }
-
-            if (payload.displayName.Length > ValidationConstants.MAX_USERNAME_LENGTH)
-            {
-                await SendResponseAsync(session, message, MessageTypes.PROFILE_UPDATE_RESPONSE,
-                    new { success = false, error = $"Display name must be at most {ValidationConstants.MAX_USERNAME_LENGTH} characters" });
-                return;
-            }
 
             if (payload.profileImage < -1)
             {
@@ -59,15 +45,14 @@ namespace NullZustand.MessageHandlers.Handlers
             try
             {
                 var player = _playerManager.GetOrCreatePlayer(session.Username);
-                player.Profile.DisplayName = payload.displayName;
                 player.Profile.ProfileImage = payload.profileImage;
 
-                Console.WriteLine($"[PROFILE] Updated profile for {session.Username}: displayName={payload.displayName}, profileImage={payload.profileImage}");
+                Console.WriteLine($"[PROFILE] Updated profile for {session.Username}: profileImage={payload.profileImage}");
 
                 await SendResponseAsync(session, message, MessageTypes.PROFILE_UPDATE_RESPONSE,
                     new { success = true });
 
-                await BroadcastProfileUpdateAsync(session.Username, payload.displayName, payload.profileImage);
+                await BroadcastProfileUpdateAsync(session.Username, payload.profileImage);
             }
             catch (Exception ex)
             {
@@ -77,7 +62,7 @@ namespace NullZustand.MessageHandlers.Handlers
             }
         }
 
-        private async Task BroadcastProfileUpdateAsync(string username, string displayName, int profileImage)
+        private async Task BroadcastProfileUpdateAsync(string username, int profileImage)
         {
             var broadcastMessage = new Message
             {
@@ -86,7 +71,6 @@ namespace NullZustand.MessageHandlers.Handlers
                 Payload = new
                 {
                     username = username,
-                    displayName = displayName,
                     profileImage = profileImage
                 }
             };

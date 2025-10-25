@@ -92,18 +92,10 @@ namespace ClientMessageHandlers.Handlers
                 if (payload["profile"] != null)
                 {
                     var profile = payload["profile"];
-                    string displayName = profile["displayName"]?.Value<string>();
                     int profileImage = profile["profileImage"]?.Value<int>() ?? -1;
 
-                    if (!string.IsNullOrEmpty(displayName))
-                    {
-                        // Get ProfileManager and set the current player's profile
-                        var profileManager = ServiceLocator.Get<ProfileManager>();
-                        if (profileManager != null)
-                        {
-                            profileManager.SetProfile(displayName, profileImage);
-                        }
-                    }
+                    // Set the current player's profile using ProfileManager from context
+                    context.ProfileManager.SetProfile(profileImage);
                 }
 
                 context.ServerController.InvokePlayerAuthenticate();

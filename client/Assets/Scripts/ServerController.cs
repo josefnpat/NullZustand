@@ -61,7 +61,7 @@ public class ServerController : MonoBehaviour
     public event Action OnSessionDisconnect;
     public event Action OnPlayerAuthenticate;
     public event Action<string, string, long> OnNewChatMessage; // (username, message, timestamp)
-    public event Action<string, string, int> OnProfileUpdate; // (username, displayName, profileImage)
+    public event Action<string, int> OnProfileUpdate; // (username, profileImage)
     public event Action OnTimeSyncUpdate;
     public event Action OnServerListUpdate;
 
@@ -240,7 +240,7 @@ public class ServerController : MonoBehaviour
         }
     }
 
-    public async void UpdateProfile(string displayName, int profileImage, Action<object> onSuccess = null, Action<string> onFailure = null)
+    public async void UpdateProfile(int profileImage, Action<object> onSuccess = null, Action<string> onFailure = null)
     {
         var result = await EnsureConnectedAsync();
         if (!result.Success)
@@ -252,7 +252,7 @@ public class ServerController : MonoBehaviour
         var handler = _handlerRegistry.GetHandler<IClientMessageHandler<ProfileUpdateRequest>>(MessageTypes.PROFILE_UPDATE_REQUEST);
         if (handler != null)
         {
-            var request = new ProfileUpdateRequest(displayName, profileImage);
+            var request = new ProfileUpdateRequest(profileImage);
             await handler.SendRequestAsync(this, request, onSuccess, onFailure);
         }
     }
@@ -579,7 +579,8 @@ public class ServerController : MonoBehaviour
 
         var entityManager = ServiceLocator.Get<EntityManager>();
         var playerManager = ServiceLocator.Get<PlayerManager>();
-        var context = new MessageHandlerContext(this, entityManager, playerManager);
+        var profileManager = ServiceLocator.Get<ProfileManager>();
+        var context = new MessageHandlerContext(this, entityManager, playerManager, profileManager);
         bool handled = _handlerRegistry.ProcessMessage(message, context);
         if (!handled)
         {
@@ -635,9 +636,9 @@ public class ServerController : MonoBehaviour
         OnNewChatMessage?.Invoke(username, message, timestamp);
     }
 
-    public void InvokeNewProfileUpdate(string username, string displayName, int profileImage)
+    public void InvokeNewProfileUpdate(string username, int profileImage)
     {
-        OnProfileUpdate?.Invoke(username, displayName, profileImage);
+        OnProfileUpdate?.Invoke(username, profileImage);
     }
 
     private void OnPlayerAuthenticated()

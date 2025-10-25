@@ -116,7 +116,6 @@ namespace NullZustand.MessageHandlers.Handlers
                     lastLocationUpdateId = currentUpdateId,
                     profile = new
                     {
-                        displayName = currentPlayer.Profile.DisplayName,
                         profileImage = currentPlayer.Profile.ProfileImage
                     }
                 });

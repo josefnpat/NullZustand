@@ -22,7 +22,6 @@ namespace ClientMessageHandlers.Handlers
                 Id = messageId,
                 Type = MessageTypes.PROFILE_UPDATE_REQUEST,
                 Payload = new {
-                    displayName = request.DisplayName,
                     profileImage = request.ProfileImage
                 }
             });
@@ -81,19 +80,18 @@ namespace ClientMessageHandlers.Handlers
             try
             {
                 string username = payload["username"]?.Value<string>();
-                string displayName = payload["displayName"]?.Value<string>();
                 int profileImage = payload["profileImage"]?.Value<int>() ?? -1;
 
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(displayName))
+                if (string.IsNullOrEmpty(username))
                 {
                     Debug.LogWarning($"[ProfileUpdate] Invalid broadcast format");
                     return;
                 }
 
-                Debug.Log($"[ProfileUpdate] Player {username} updated profile: displayName={displayName}, profileImage={profileImage}");
+                Debug.Log($"[ProfileUpdate] Player {username} updated profile: profileImage={profileImage}");
 
                 // Trigger profile update event for UI or other systems
-                context.ServerController.InvokeNewProfileUpdate(username, displayName, profileImage);
+                context.ServerController.InvokeNewProfileUpdate(username, profileImage);
             }
             catch (Exception ex)
             {
@@ -105,12 +103,10 @@ namespace ClientMessageHandlers.Handlers
     [Serializable]
     public class ProfileUpdateRequest
     {
-        public string DisplayName { get; set; }
         public int ProfileImage { get; set; }
 
-        public ProfileUpdateRequest(string displayName, int profileImage)
+        public ProfileUpdateRequest(int profileImage)
         {
-            DisplayName = displayName;
             ProfileImage = profileImage;
         }
     }
