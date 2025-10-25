@@ -40,18 +40,22 @@ public class ProfileManager : MonoBehaviour
 
     private void OnPreviousProfilePictureButton()
     {
-        if (_currentProfileImage > 0)
+        int newIndex = _currentProfileImage - 1;
+        if (newIndex < 0)
         {
-            SetLocalProfilePicture(_currentProfileImage - 1);
+            newIndex = _profilePicturesScriptableObjectScript.profilePictures.Count - 1;
         }
+        SetLocalProfilePicture(newIndex);
     }
 
     private void OnNextProfilePictureButton()
     {
-        if (_currentProfileImage < _profilePicturesScriptableObjectScript.profilePictures.Count - 1)
+        int newIndex = _currentProfileImage + 1;
+        if (newIndex >= _profilePicturesScriptableObjectScript.profilePictures.Count)
         {
-            SetLocalProfilePicture(_currentProfileImage + 1);
+            newIndex = 0;
         }
+        SetLocalProfilePicture(newIndex);
     }
 
     private void OnUpdateProfileButton()
